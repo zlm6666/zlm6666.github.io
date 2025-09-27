@@ -1,16 +1,9 @@
 # 根目录的 netlify.toml（必须用这个文件名！）
-[build]
-  # 如果你的项目是纯静态（无构建步骤），留空或删掉 [build] 块
-  # 如果有构建（比如React/Vue），填对应的命令和发布目录：
-  # command = "npm run build"
-  # publish = "dist"
-
-# 顶级 [functions] 块：指定函数存放的文件夹（仅这一处 [functions]！）
+# 1. 顶级 [functions] 块：配置函数存放目录（仅这一处！）
 [functions]
-  directory = "mtp/ebook"  # proxy.js 所在的目录（必须正确）
+  directory = "mtp/ebook"  # proxy.js 所在的文件夹路径（必须正确）
 
-# 自定义路由：让 /mtp/ebook/proxy 开头的请求都走 proxy 函数
-# 注意：这里是 [[functions]]（双括号），不是 [functions]（单括号）！
+# 2. 自定义路由：和 [functions] 同级，定义 /mtp/ebook/proxy 前缀的请求由 proxy 函数处理
 [[functions]]
   path = "/mtp/ebook/proxy"  # 前端请求的路径前缀（必须和访问的一致）
-  handler = "proxy.handler"  # 函数文件是 proxy.js，handler 是导出的函数名
+  handler = "proxy.handler"  # 函数文件是 proxy.js，导出的函数名是 handler
