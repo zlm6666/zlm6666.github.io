@@ -1,9 +1,6 @@
-# 根目录的 netlify.toml（必须用这个文件名！）
-# 1. 顶级 [functions] 块：配置函数存放目录（仅这一处！）
 [functions]
-  directory = "mtp/ebook"  # proxy.js 所在的文件夹路径（必须正确）
+  directory = "mtp/ebook"
 
-# 2. 自定义路由：和 [functions] 同级，定义 /mtp/ebook/proxy 前缀的请求由 proxy 函数处理
 [[functions]]
-  path = "/mtp/ebook/proxy"  # 前端请求的路径前缀（必须和访问的一致）
-  handler = "proxy.handler"  # 函数文件是 proxy.js，导出的函数名是 handler
+  path = "/mtp/ebook/proxy"
+  handler = "proxy.handler"
