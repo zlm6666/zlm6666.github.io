@@ -9,7 +9,7 @@ exports.handler = async (event) => {
     // 【关键配置】必须改对！
     // --------------------------
     const TARGET_API = 'https://ikun.laoguantx.top:4390'; // ✅ 真实要访问的API地址（不是你自己的Netlify站点！）
-    const PROXY_PREFIX = '/mtp/ebook/proxy';             // ✅ 前端请求的路径前缀（必须和访问的一致）
+    const PROXY_PREFIX = '/.netlify/functions/proxy';             // ✅ 前端请求的路径前缀（必须和访问的一致）
     // --------------------------
 
     // 3. 提取前端请求中的「真实API路径+参数」（去掉代理前缀）
