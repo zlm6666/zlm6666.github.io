@@ -365,7 +365,7 @@
         // 文本内容加载函数
         async function loadExternalContent() {
             try {
-                const response = await fetch('./mtp/txt/gg.txt');
+                const response = await fetch('./mtp/txt/tucao.txt');
                 if (!response.ok) throw new Error('网络响应不正常');
                 const text = await response.text();
                 return text;
