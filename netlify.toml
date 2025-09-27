@@ -10,5 +10,5 @@
 
 # 关键：自定义路由规则（让 /mtp/ebook/proxy 开头的请求都走 proxy 函数）
 [[functions]]
-  path = "/mtp/ebook/proxy"  # 前端请求的路径前缀（必须和前端访问的一致）
+  path = "/mtp/ebook"  # 前端请求的路径前缀（必须和前端访问的一致）
   handler = "proxy.handler"  # 函数文件是 proxy.js，handler 是函数名（exports.handler）
