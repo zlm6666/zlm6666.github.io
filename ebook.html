@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer">
+    <title>小说搜索与下载</title>
+    <script id="FileSaver.js" src="https://s4.zstatic.net/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- 自己把下面两行取消注释可用移动端开发者工具 -->
+    <script>if(typeof navigator !== 'undefined'&&navigator.userAgent.match(/Android|iOS/)&&window.location.href.includes('dev=true')){const script=document.createElement('script');script.src="https://s4.zstatic.net/ajax/libs/eruda/3.4.1/eruda.min.js";script.referrerpolicy="no-referrer";script.crossorigin="anonymous";script.id="eruda.js";document.head.appendChild(script);const intv=setInterval(()=>{try{eruda.init();clearInterval(intv)}catch(e){}},500)}</script>
+    <script id="moment.js" src="https://s4.zstatic.net/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
+    <script id="lodash.js" src="https://s4.zstatic.net/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <script
+      id="jszip"
+      src="https://s4.zstatic.net/ajax/libs/jszip/3.10.1/jszip.min.js"
+      integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script id="gbk.js">
+      // 本来是压缩过的，结果格式化工具又给我格式化了，干脆不管了
+      'use strict'
+      let table
+      function initGbkTable() {
+        var r,
+          t,
+          e,
+          o,
+          n = new Uint16Array(23940)
+        let f = 0
+        for ([r, t, e, o] of [
+          [161, 169, 161, 254],
+          [176, 247, 161, 254],
+          [129, 160, 64, 254],
+          [170, 254, 64, 160],
+          [168, 169, 64, 160],
+          [170, 175, 161, 254],
+          [248, 254, 161, 254],
+          [161, 167, 64, 160],
+        ])
+          for (let l = e; l <= o; l++) if (127 !== l) for (let e = r; e <= t; e++) n[f++] = (l << 8) | e
+        ;(table = new Uint16Array(65536)).fill(65535)
+        var l = new TextDecoder('gbk').decode(n)
+        for (let e = 0; e < l.length; e++) table[l.charCodeAt(e)] = n[e]
+      }
+      const NodeJsBufAlloc = 'function' == typeof globalThis.Buffer && Buffer.allocUnsafe,
+        defaultOnAlloc = NodeJsBufAlloc ? e => NodeJsBufAlloc(e) : e => new Uint8Array(e),
+        defaultOnError = () => 63
+      window.encodeGBK = function (l, e = {}) {
+        table || initGbkTable()
+        var r = e.onAlloc || defaultOnAlloc,
+          t = e.onError || defaultOnError,
+          o = r(2 * l.length)
+        let n = 0
+        for (let e = 0; e < l.length; e++) {
+          var f = l.charCodeAt(e)
+          if (f < 128) o[n++] = f
+          else {
+            var a = table[f]
+            if (65535 !== a) (o[n++] = a), (o[n++] = a >> 8)
+            else if (8364 === f) o[n++] = 128
+            else {
+              a = t(e, l)
+              if (-1 === a) break
+              255 < a ? ((o[n++] = a), (o[n++] = a >> 8)) : (o[n++] = a)
+            }
+          }
+        }
+        return o.subarray(0, n)
+      }
+    </script>
+    <script id="epub-saver.js" src="./mtp/llepub-latest.js"></script>
+  </head>
+  <body>
+    <button class="toggle-theme" onclick="toggleTheme()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" id="light">
+        <circle cx="12" cy="12" r="10" fill="currentColor" />
+      </svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" id="dark">
+        <path
+          fill="currentColor"
+          d="M10 2c-1.82 0-3.53.5-5 1.35C7.99 5.08 10 8.3 10 12s-2.01 6.92-5 8.65C6.47 21.5 8.18 22 10 22c5.52 0 10-4.48 10-10S15.52 2 10 2"
+        />
+      </svg>
+    </button>
+    <h1 id="title">小说搜索与下载</h1>
+    <div id="container" class="container">
+      <form class="search-form" id="search-form">
+        <select id="search-type" class="search-type">
+          <option value="book">书籍</option>
+          <option value="audio">听书</option>
+        </select>
+        <input type="text" id="book-search" placeholder="请输入小说名称" />
+        <button type="button" onclick="searchBooks()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" width="24" height="24" viewBox="0 0 24 24" display="inherit">
+            <path d="M16.296 16.996a8 8 0 11.707-.708l3.909 3.91-.707.707-3.909-3.909zM18 11a7 7 0 00-14 0 7 7 0 1014 0z" />
+          </svg>
+        </button>
+      </form>
+      <div id="book-list" class="book-list"></div>
+      <div id="book-info" class="book-info">
+        <img src="" alt="封面" id="book-cover" />
+        <div class="book-info-container">
+          <p id="book_id" style="display: none"></p>
+          <p id="book_info" style="display: none"></p>
+          <p id="download_lock" style="display: none"></p>
+          <h2 id="book-title"></h2>
+          <p><strong>作者：</strong><span id="book-author"></span></p>
+          <p><strong>分类：</strong><span id="book-category"></span></p>
+          <p><strong>状态：</strong><span id="creation-status"></span></p>
+          <p><strong>最新章节：</strong><span id="latest-chapter"></span> <span id="latest-chapter-passtime"></span></p>
+          <p id="book-description"></p>
+          <button class="download-btn" onclick="downloadBook()">下载</button>
+          <select id="type-selector" class="charset-selector">
+            <option value="text">文本</option>
+            <option value="audio">音频</option>
+          </select>
+          <select id="charset-selector" class="charset-selector">
+            <option value="utf-8">UTF-8</option>
+            <option value="gbk">GBK</option>
+          </select>
+          <select id="format-selector" class="charset-selector">
+            <option value="txt">TXT</option>
+            <option value="epub">EPUB</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <!-- 进度条弹窗 -->
+    <div id="progress-modal" class="progress-modal" style="display: none">
+      <div class="progress-box">
+        <h3 id="progress-title" class="progress-title">下载进度</h3>
+        <div class="progress-bar">
+          <div id="progress-bar-fill" class="progress-bar-fill"></div>
+        </div>
+        <div class="progress-text">
+          <p id="progress-percentage">0%</p>
+          <p id="progress-count">0/0</p>
+        </div>
+        <div id="sub-progress" style="display: none">
+          <div class="progress-bar">
+            <div id="sub-progress-bar-fill" class="progress-bar-fill"></div>
+          </div>
+          <p id="sub-progress-title" class="progress-text">副标题</p>
+        </div>
+        <button id="progress-cancel" class="progress-cancel">取消</button>
+        <button id="progress-submit" class="progress-submit" style="display: none">确定</button>
+        <button id="button-resave" class="button-resave" style="display: none" onclick="reSave()">手动保存</button>
+        <button id="button-redownload" class="button-redownload" style="display: none" onclick="reDownload()">重新下载</button>
+      </div>
+    </div>
+    <!-- 点击书名后的弹窗 -->
+    <dialog id="internal-alert" class="internal-alert">
+      <div id="internal-alert-container" class="internal-alert-container">
+        <span>内容</span>
+      </div>
+    </dialog>
+    <hr>
+    <div class="footer">
+      <div class="about-container">
+        <p class="about-text">本网页为 <a href="https://github.com/MeoProject/PyFQWeb">PyFQWeb</a> 项目的一部分，请遵守开源协议使用</p>
+      </div>
+    </div>
+    <script>
+      const apiNode = 'https://xiao-1234/netlify.app/mtp/ebook/proxy'
+      if (!apiNode) alert('请配置apiNode后再使用网页（需要支持跨域）')
+
+      // TODO: 标准化API响应数据
+      function normalizeApiResponse(response) {
+        return response
+      }
+
+      function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+      }
+      
+      function btoaEh(str) {
+        const bytes = new TextEncoder().encode(str);
+
+        let binary = ''
+        bytes.forEach(b => binary += String.fromCharCode(b))
+
+        return btoa(binary)
+      }
+
+      // URL参数管理函数
+      function updateUrlParams(params) {
+        const url = new URL(window.location.href)
+        if (url.protocol === 'file:' || url.protocol === 'content:') return
+        
+        // 清除所有相关参数
+        url.searchParams.delete('book_id')
+        url.searchParams.delete('text')
+        url.searchParams.delete('search_type')
+        
+        // 设置新参数
+        Object.keys(params).forEach(key => {
+          if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
+            url.searchParams.set(key, params[key])
+          }
+        })
+        
+        // 更新URL而不刷新页面
+        window.history.pushState({ path: url.href }, '', url.href)
+      }
+
+      // 从URL参数恢复状态
+      function restoreFromUrlParams() {
+        const url = new URL(window.location.href)
+        const bookId = url.searchParams.get('book_id')
+        const searchText = url.searchParams.get('text')
+        const searchType = url.searchParams.get('search_type')
+        
+        // 恢复搜索类型
+        if (searchType) {
+          const searchTypeSelect = document.getElementById('search-type')
+          if (searchTypeSelect) {
+            searchTypeSelect.value = searchType
+          }
+        }
+        
+        // 恢复搜索框内容
+        if (searchText && !bookId) {
+          const searchInput = document.getElementById('book-search')
+          if (searchInput) {
+            searchInput.value = searchText
+          }
+        }
+        
+        // 自动执行搜索或显示书籍信息
+        if (bookId) {
+          // 如果有book_id，直接显示书籍信息
+          showBookInfo(bookId)
+        } else if (searchText) {
+          // 如果只有搜索文本，执行搜索
+          searchBooks(searchText)
+        }
+      }
+
+      // 设置页面主题
+      function setTheme(theme) {
+        document.body.dataset.theme = theme
+        document.getElementById(theme).setAttribute('display', 'block')
+        document.getElementById(theme === 'dark' ? 'light' : 'dark').setAttribute('display', 'none')
+      }
+
+      // 自动检测浏览器主题并设置页面主题
+      function setThemeBasedOnPreference() {
+        const savedTheme = localStorage.getItem('theme')
+        if (savedTheme) {
+          setTheme(savedTheme)
+        } else {
+          const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          setTheme(systemTheme)
+        }
+      }
+
+      // 切换主题并保存到localStorage
+      function toggleTheme() {
+        const currentTheme = document.body.dataset.theme || 'light'
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
+        setTheme(newTheme)
+        localStorage.setItem('theme', newTheme)
+      }
+
+      // 初始化主题
+      setThemeBasedOnPreference()
+      // 初始化form提交事件
+      document.getElementById('search-form').addEventListener('submit', function (event) {
+        event.preventDefault()
+        searchBooks()
+      })
+
+      function formatCount(num, lang) {
+        const units = {
+          'zh': [{d: 1e8, s: '亿'}, {d: 1e4, s: '万'}],
+          'en': [{d: 1e9, s: 'billion'}, {d: 1e6, s: 'million'}, {d: 1e3, s: 'thousand'}],
+          'ja': [{d: 1e8, s: '億'}, {d: 1e4, s: '万'}],
+          'ko': [{d: 1e8, s: '억'}, {d: 1e4, s: '만'}],
+          'de': [{d: 1e9, s: 'Milliarde'}, {d: 1e6, s: 'Million'}, {d: 1e3, s: 'Tausend'}],
+          'es': [{d: 1e9, s: 'mil millones'}, {d: 1e6, s: 'millón'}, {d: 1e3, s: 'mil'}],
+          'ru': [{d: 1e9, s: 'миллиард'}, {d: 1e6, s: 'миллион'}, {d: 1e3, s: 'тысяча'}],
+          'ar': [{d: 1e9, s: 'مليار'}, {d: 1e6, s: 'مليون'}, {d: 1e3, s: 'ألف'}]
+        };
+
+        const browserLang = (navigator.language || 'en').substring(0,2);
+        const targetLang = units[lang] ? lang : units[browserLang] ? browserLang : 'en';
+
+        const unit = units[targetLang].find(u => num >= u.d) || {d:1, s:''};
+        const value = num / unit.d;
+
+        const formatted = value.toLocaleString(targetLang, {
+          maximumFractionDigits: 3,
+          minimumFractionDigits: 0
+        }).replace(/\.0+$/, '');
+
+        return targetLang === 'ar' 
+          ? `${formatted}\u202C${unit.s}\u202C` 
+          : `${formatted}${unit.s}`;
+      }
+      
+      function formatDuration(seconds) {
+        // 处理负数边界情况
+        const totalSeconds = Math.max(0, Math.round(seconds));
+    
+        // 时间单位分解
+        const hours = Math.floor(totalSeconds / 3600);
+        const remaining = totalSeconds % 3600;
+        const minutes = Math.floor(remaining / 60);
+        const secs = remaining % 60;
+
+        // 构建时间片段
+        const timeFragments = [];
+        if (hours > 0) {
+          timeFragments.push(
+            hours.toString().padStart(2, '0'),
+            minutes.toString().padStart(2, '0')
+          );
+        } else {
+          timeFragments.push(minutes.toString().padStart(2, '0'));
+        }
+        timeFragments.push(secs.toString().padStart(2, '0'));
+
+        return timeFragments.join(':');
+      }
+
+      function isShitBrowser() {
+        const userAgent = navigator.userAgent.toLowerCase()
+        return /qua|qqbrowser|micromessenger|quark|baidu|uc|mbrowser/i.test(userAgent)
+      }
+
+      function timeStampFormat(ts) {
+        return moment(parseInt(ts) * 1000).format('YYYY-MM-DD HH:mm:ss')
+      }
+
+      if (isShitBrowser()) {
+        let now = Date.now()
+        while (Date.now() - now < 30000) {
+          alert(
+            '本站使用JS原生下载API\n请不要使用 夸克 QQ浏览器 百度 等国产魔改浏览器，否则你将无法正常保存书籍\n建议即转下载Via使用，谢谢\n本通知持续30秒，如果您执意要使用类似浏览器，请等30秒'
+          )
+        }
+      }
+
+      function matchId(url) {
+        const regex = /(?:\/page\/(\d{19})|[\?&]book_id=(\d{19}))/
+        const match = url.match(regex)
+
+        if (match || (url.length === 19 && !Number.isNaN(parseInt(url)))) {
+          return match ? match[1] || match[2] : url
+        } else {
+          return null
+        }
+      }
+
+      // 搜索书籍
+      async function searchBooks(k) {
+        const query = k || document.getElementById('book-search').value.trim()
+        const type = document.getElementById('search-type').value || 'book'
+        const typeMap = {
+          book: 3,
+          audio: 2,
+        }
+        if (!query) {
+          return
+        }
+        
+        let _book_id = matchId(query)
+        if (_book_id) {
+          // 如果是书籍ID，更新URL参数并显示书籍信息
+          updateUrlParams({
+            book_id: _book_id,
+            search_type: type
+          })
+          return await showBookInfo(_book_id)
+        }
+        
+        // 更新URL参数 - 搜索状态
+        updateUrlParams({
+          text: query,
+          search_type: type
+        })
+        
+        // 更新搜索框内容（如果是通过参数调用的）
+        if (k && document.getElementById('book-search').value !== query) {
+          document.getElementById('book-search').value = query
+        }
+        
+        const offset = 0 // 默认偏移量
+        const tabType = typeMap[type]
+        const url = `${apiNode}/search?query=${query}&offset=${offset}&tab_type=${tabType}`
+
+        try {
+          const response = await fetch(url)
+          const rawData = await response.json()
+          const data = normalizeApiResponse(rawData)
+          
+          const resp = data.search_tabs.find(tab => tab.tab_type === typeMap[type])?.data || []
+          let searchResults = []
+          for (let i of resp) {
+            let obj = (i.book_data || [])[0]
+            if (obj) searchResults.push(obj)
+          }
+          displaySearchResults(searchResults)
+        } catch (error) {
+          console.error('搜索失败:', error)
+        }
+      }
+
+      // 显示搜索结果
+      function displaySearchResults(results) {
+        const bookList = document.getElementById('book-list')
+        bookList.innerHTML = '' // 清空列表
+        results.forEach(result => {
+          const bookItem = document.createElement('div')
+          bookItem.classList.add('book-item')
+          bookItem.dataset.bookId = result.book_id
+          bookItem.innerHTML = `
+            <div>${result.book_name}</div>
+            <div>${result.author}</div>
+          `
+          bookItem.addEventListener('click', () => showBookInfo(result.book_id))
+          bookList.appendChild(bookItem)
+        })
+        const bookInfo = document.getElementById('book-info')
+        bookInfo.style.display = 'none' // 隐藏书籍详情区域
+      }
+
+      // 显示书籍详细信息
+      async function showBookInfo(bookId) {
+        const platformMap = {
+          '1967': '番茄APP',
+          '1128': '抖音',
+          '13': '今日头条'
+        }
+        
+        // 更新URL参数 - 书籍详情状态
+        const currentSearchType = document.getElementById('search-type').value
+        updateUrlParams({
+          book_id: bookId,
+          search_type: currentSearchType
+        })
+        
+        const bookList = document.getElementById('book-list')
+        bookList.innerHTML = '' // 清空搜索列表
+        
+        const url = `${apiNode}/info?book_id=${bookId}`
+        try {
+          const response = await fetch(url)
+          const rawData = await response.json()
+          const data = normalizeApiResponse(rawData)
+          const bookData = data.data || {} // 返回的数据在`data`字段中
+
+          // 填充书籍信息到页面
+          const bookInfo = document.getElementById('book-info')
+          bookInfo.style.display = 'flex' // 显示书籍详情区域
+
+          document.getElementById('book_id').innerHTML = bookId
+          document.getElementById('book_info').innerHTML = JSON.stringify(bookData)
+          document.getElementById('book-title').textContent = bookData.book_name || '未知标题'
+          document.getElementById('book-author').textContent = bookData.author || '未知作者'
+          document.getElementById('book-category').textContent = bookData.category || '未知分类'
+          document.getElementById('book-description').textContent = bookData.abstract || '暂无简介'
+          document.getElementById('book-cover').src = bookData.thumb_url || 'default_cover.jpg' // 默认封面
+          document.getElementById('creation-status').textContent = ['未知', '完结', '连载', null, null, null, '断更'][
+            (bookData.creation_status << 0) + 1
+          ]
+          document.getElementById('latest-chapter').textContent = bookData.last_chapter_title || '未知'
+          document.getElementById('latest-chapter-passtime').textContent = timeStampFormat(bookData.last_chapter_first_pass_time)
+          document.getElementById('internal-alert-container').innerHTML = `
+<h3 align="center">基础信息</h3>
+<p>书籍ID: ${bookData.book_id}  <a href="https://fanqienovel.com/page/${bookData.book_id}" target="_blank">去官方</a> <a href="legado://import/addToBookshelf?src=https%3A%2F%2Ffanqienovel.com%2F${bookData.book_id}">在开源阅读查看</a> <a href="dragon1967://reading?bookId=${bookData.book_id}">在番茄小说查看</a></p>
+<p>当前报告返回书名: ${bookData.book_name}</p>
+<p>书籍源名（作者开书使用的名字）: ${bookData.original_book_name} <a href="https://p6-novel.byteimg.com/origin/${bookData.thumb_uri}" target="_blank">查看封面</a></p>
+<p>书籍别名（书籍宣发使用的名字）: ${bookData.book_flight_alias_name || '无'} ${bookData.book_flight_alias_name ? '<a href="https://p6-novel.byteimg.com/origin/' + bookData.book_flight_alias_thumb + '" target="_blank">查看封面</a>' : ''}</p>
+<p>短书名: ${bookData.book_short_name || '无'}</p>
+<p>字数: ${formatCount(bookData.word_number)} (${bookData.word_number})</p>
+<p>书籍创建时间: ${moment(bookData.create_time).format('YYYY-MM-DD HH:mm:ss')} (${bookData.create_time})</p>
+<p>分类: ${bookData.category}</p>
+<p>标签: ${bookData.tags}</p>
+<p>读者数: ${formatCount(bookData.read_count)} (${bookData.read_count})</p>
+<p>听书人数: ${formatCount(bookData.listen_count)} (${bookData.listen_count})</p>
+<p>书籍分类: ${bookData.gender ? (['女频', '男频', '出版'][(bookData.gender << 0)] || '未知') : '未知'} (${bookData.gender})</p>
+<p>当前状态: ${['未知', '完结', '连载', null, null, null, '断更'][(bookData.creation_status << 0) + 1] || '未知'} (${bookData.creation_status})</p>
+<p>ISBN: ${bookData.isbn || '书籍无出版数据'}</p>
+<p>${bookData.copyright_info.replace('，如有任何疑问，请通过"我的-意见反馈"告知我们', '')}。</p>
+<hr>
+<h3 align="center">简介</h3>
+<p>${('\u3000\u3000' + bookData.book_abstract_v2.split('\n').join('<br />\u3000\u3000')).replace(/[\u3000]+/g, '\u3000\u3000')}</p>
+<hr>
+<h3 align="center">数据信息</h3>
+<p>听书总时长: ${formatDuration(bookData.duration)} (${bookData.duration}s)</p>
+<p align="center"><strong>以下数据仅供参考</strong></p>
+<p>活跃读者数: ${formatCount(bookData.read_count)} (${bookData.read_count}) | 总读者数: ${formatCount(bookData.read_count_all)} (${bookData.read_count_all}) | 占比: ${(bookData.read_count / bookData.read_count_all * 100).toFixed(3)}%</p>
+<p>总加书架数: ${formatCount(bookData.shelf_cnt_history)} (${bookData.shelf_cnt_history}) | 14日加书架数: ${formatCount(bookData.add_shelf_count_14d)} (${bookData.add_shelf_count_14d}) | 占比: ${(bookData.add_shelf_count_14d / bookData.shelf_cnt_history * 100).toFixed(3)}%</p>
+<hr>
+<h3 align="center">各子平台上线时间</h3>
+<p>没做</p>
+`
+        } catch (error) {
+          console.error('获取书籍详情失败:', error)
+          alert('获取书籍详情失败')
+        }
+      }
+
+      // 返回搜索功能
+      function goBackToSearch() {
+        // 显示搜索表单
+        const searchForm = document.getElementById('search-form')
+        searchForm.style.display = 'flex'
+        
+        // 隐藏书籍信息
+        const bookInfo = document.getElementById('book-info')
+        bookInfo.style.display = 'none'
+        
+        // 清空书籍列表
+        const bookList = document.getElementById('book-list')
+        bookList.innerHTML = ''
+        
+        // 获取当前搜索参数并更新URL
+        const currentSearchText = document.getElementById('book-search').value
+        const currentSearchType = document.getElementById('search-type').value
+        
+        if (currentSearchText) {
+          updateUrlParams({
+            text: currentSearchText,
+            search_type: currentSearchType
+          })
+          // 重新执行搜索
+          searchBooks(currentSearchText)
+        } else {
+          // 如果没有搜索内容，清除所有参数
+          updateUrlParams({})
+        }
+      }
+
+      // 分割 Array
+      const chunkArray = (arr, size) => {
+        const result = []
+        for (let i = 0; i < arr.length; i += size) {
+          result.push(arr.slice(i, i + size))
+        }
+        return result
+      }
+
+      // 修复章节带特殊符号的
+      function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      }
+
+      // 高清化封面
+      const replaceCover = u => {
+        if (u.indexOf('novel-pic-r') !== -1) return u
+        if (u.startsWith('https://')) u = u.substring(8)
+        else u = u.substring(7)
+        let uArr = u.split('/')
+        uArr[0] = 'https://p6-novel.byteimg.com/origin'
+        let uArr2 = []
+        uArr.forEach(x => {
+          if (!x.includes('?') && !x.includes('~')) uArr2.push(x)
+          else uArr2.push(x.split('~')[0])
+        })
+        u = uArr2.join('/')
+        return u
+      }
+
+      async function downloadEpub(result, catalog, bookData, progress, cssMap) {
+        const saver = new EpubSaver()
+        let intr = ''
+        await saver.setInfo('title', bookData.book_name)
+        intr += `分类：${JSON.parse(bookData.category_v2)
+          .map(item => item.Name)
+          .join('、')}\n`
+        intr += `主角：${JSON.parse(bookData.roles || '[]').join('、')}\n`
+        intr += `简介：${bookData.abstract}\n`
+        intr += `${bookData.copyright_info.replace('，如有任何疑问，请通过"我的-意见反馈"告知我们', '')}。`
+        await saver.setInfo('description', intr)
+        await saver.setInfo('generator', 'PyFQWeb - WebDownloader / llepub-saver')
+        await saver.setInfo('language', 'zh-CN')
+        await saver.setInfo('creator', bookData.author)
+        await saver.setInfo('author', bookData.author)
+        await saver.cover(replaceCover(bookData.thumb_url))
+        // 这个从番茄 APP 里刷出来的
+        await saver.addCSS(
+          0,
+          `html{
+    display:block;
+}
+
+body{
+    display:block;
+}
+
+p{
+    font-size:1em;
+    text-align:justify;
+    display:block;
+    text-indent:2em;
+    margin:0.6em 0em 0.6em 0em;
+}
+
+div{
+    display:block;
+}
+
+h1{
+    display:block;
+    font-size:1.42em;
+    font-weight:bold;
+    margin:22px 0em 3em 0em;
+    text-align:left;
+    line-space:0.5em;
+}
+
+h2{
+    display:block;
+    font-size:1.2em;
+    font-weight:bold;
+    margin:1em 0em 0.6em 0em;
+    text-align:left;
+}
+
+h3{
+    display:block;
+    font-size:1em;
+    font-weight:bold;
+    margin:0em 0em 1em 0em;
+    text-align:left;
+}
+
+sup{
+    font-size:smaller;
+}
+
+.picture{
+    text-indent:0em;
+    text-align:center;
+    margin:0em 0em 0em 0em;
+    line-space:0em;
+}
+
+.pictureDesc{
+    font-size:0.73em;
+    text-indent:0em;
+    margin:0.4em 0em 1em 0em;
+    theme-color:color1#0.7;
+    line-space:0.3em;
+    text-align:left;
+}
+
+.pictureTitle{
+    font-size:0.73em;
+    text-indent:0em;
+    margin:1em 0em 0.3em 0em;
+    theme-color:color1#0.7;
+    text-align:left;
+    line-space:0em;
+}
+
+.collectTitle{
+    margin:80px 68px 0em 0px;
+    font-size:1.42em;
+    text-indent:0em;
+    text-align:left;
+}
+
+.collectAuthor{
+    margin:16px 0em 0em 0em;
+    font-size:1em;
+    text-indent:0em;
+    text-align:left;
+}
+
+.collectPicture{
+    margin:24px 0em 0em 0em;
+    text-indent:0em;
+    text-align:right;
+}
+
+.collectDetail{
+    margin:3em 44px 0em 10px;
+    text-indent:0em;
+}
+
+.quoteDefault{
+    font-size:1em;
+    margin:1.5em 0em 1.5em 2em;
+    font-family:'FZShengShiKaiShuS-M-GB';
+    line-space:0.5em;
+}
+
+.quoteStyle1{
+    text-indent:0em;
+    text-align:left;
+}
+
+.alignRight{
+    text-align:right;
+}
+
+.quoteDefaultAlignRight{
+    font-size:1em;
+    margin:0.6em 0em 1.5em 32px;
+    font-family:'FZShengShiKaiShuS-M-GB';
+    text-align:right;
+    line-space:0.5em;
+}
+.chapterTitle1{
+    display:block;
+    font-size:1.42em;
+    font-weight:bold;
+    margin:22px 0em 3em 0em;
+    text-align:left;
+    line-space:0.5em;
+}
+
+.chapterTitle2{
+    display:block;
+    font-size:1.2em;
+    font-weight:bold;
+    margin:1em 0em 0.6em 0em;
+    text-align:left;
+}
+
+.chapterTitle3{
+    display:block;
+    font-size:1em;
+    font-weight:bold;
+    margin:0em 0em 1em 0em;
+    text-align:left;
+}
+
+.bdFootnote{
+    width:0.69em;
+    height:0.84em;
+    margin-top:-0.23em;
+    vertical-align:top;
+}
+
+.bdPicturebg{
+    break-before:always;
+}`,
+          'Styles/dragon-common.css'
+        )
+        let cssMapIdx
+        if (cssMap && typeof cssMap === 'object') {
+          console.log(cssMap)
+          cssMapIdx = await saver.addCSSMap(cssMap)
+        }
+        let volname = '默认卷'
+        let curvolidx = 0
+        let cursor = 0
+        let currentVolume
+        for (const i of catalog) {
+          if (progress.isCancelled) break
+          const data = result[i.item_id]
+          if (data?.novel_data?.volume_name && volname != data.novel_data.volume_name) {
+            volname = data.novel_data.volume_name
+            currentVolume = await saver.addVolume(curvolidx++, volname)
+            console.log('更换卷', currentVolume)
+          }
+          if (typeof currentVolume === 'undefined') {
+            currentVolume = await saver.addVolume(curvolidx, volname)
+            console.log('创建新卷', currentVolume)
+          }
+          let curChapContent = data.content || '<p>正文内容为空</p>'
+          let mat = curChapContent.match(/<article>([\S\s]+)<\/article>/)
+          // console.log(mat)
+          curChapContent = (mat ? mat[1] : null) || curChapContent
+          await currentVolume.addChapter(
+            cursor++,
+            i.title,
+            curChapContent,
+            curChapContent.includes('xhtml') ? 'xhtml' : 'html',
+            true
+          )
+          progress.updateProgressBar(cursor)
+        }
+        if (progress.isCancelled) { 
+          delete saver
+          return
+        }
+        progress.updateTitle('正在生成EPUB...')
+        progress.total = 1
+        progress.updateProgressBar(0)
+        const epub = await saver.save()
+        console.log(epub)
+        progress.updateProgressBar(1)
+        progress.updateTitle('执行完成，正在保存')
+        progress.complete(false)
+        const blob = new Blob([epub], { type: 'application/epub+zip' })
+        saveAs(blob, `${bookData.book_name}_${bookData.author}.epub`)
+      }
+
+      // 检查批量下载支持
+      async function checkBatchChapterSupport() {
+        try {
+          const response = await fetch(`${apiNode}/batch_chapter`, {
+            method: 'GET'
+          })
+          const data = await response.json()
+          // 如果能解析为有效JSON，说明支持此功能
+          return true
+        } catch (err) {
+          console.warn('批量下载接口不支持:', err)
+          return false
+        }
+      }
+
+      // 批量下载章节
+      async function batchDownloadChapters(itemIds) {
+        try {
+          const response = await fetch(`${apiNode}/batch_chapter`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              item_ids: itemIds
+            })
+          })
+          
+          const result = await response.json()
+          if (result.code === 0 && result.data) {
+            return result.data
+          } else {
+            throw new Error(`批量下载失败: ${result.message || '未知错误'}`)
+          }
+        } catch (err) {
+          console.error('批量下载请求失败:', err)
+          throw err
+        }
+      }
+
+      // 重试失败的章节（单独下载）
+      async function downloadFailedChapters(failedIds, result, progress, catalog) {
+        let curr = 0
+        progress.total = failedIds.length
+        for (const item_id of failedIds) {
+          if (progress.isCancelled) break
+          
+          let success = false
+          for (let retry = 0; retry < 3 && !success; retry++) {
+            try {
+              const response = await fetch(`${apiNode}/content?item_id=${item_id}`)
+              const rawBody = await response.json()
+              const body = normalizeApiResponse(rawBody)
+
+              if (body.data?.content) {
+                result[item_id] = body.data
+                success = true
+                console.log(`重试成功: ${item_id}`)
+                curr++
+                progress.updateProgressBar(curr)
+              } else {
+                await new Promise(r => setTimeout(r, 300))
+              }
+            } catch (err) {
+              console.error(`重试失败 ${item_id}:`, err)
+              await new Promise(r => setTimeout(r, 500))
+            }
+          }
+          
+          if (!success) {
+            console.warn(`最终失败: ${item_id}`)
+          }
+        }
+      }
+
+      // 逐个下载章节（原有逻辑）
+      async function downloadChaptersIndividually(item_ids, result, progress, catalog) {
+        const maxConcurrentRequests = 64
+        const concurrencyLimit = maxConcurrentRequests
+        
+        // 创建异步任务队列
+        const queue = item_ids.map(item_id => ({
+          item_id,
+          status: 'pending',
+          retries: 0,
+        }))
+
+        let activeCount = 0
+        let cursor = 0
+        let hasError = false
+
+        return new Promise(resolve => {
+          const runWorker = async () => {
+            while (queue.length > 0 && !hasError && !progress.isCancelled) {
+              if (activeCount >= concurrencyLimit) return
+
+              const task = queue.shift()
+              if (!task || task.status === 'success') return
+
+              activeCount++
+              let success = false
+
+              try {
+                while (task.retries <= 3) {
+                  if (progress.isCancelled) break
+
+                  const response = await fetch(`${apiNode}/content?item_id=${task.item_id}`)
+                  const rawBody = await response.json()
+                  const body = normalizeApiResponse(rawBody)
+
+                  if (body.data?.content) {
+                    result[task.item_id] = body.data
+                    cursor++
+                    progress.updateProgressBar(cursor)
+                    progress.updateTitle('缓存中... | ' + (catalog[cursor] || {}).title)
+                    success = true
+                    break
+                  } else {
+                    task.retries++
+                    await new Promise(r => setTimeout(r, 300))
+                  }
+                }
+              } catch (error) {
+                console.error(`item ${task.item_id} failed:`, error)
+              } finally {
+                activeCount--
+
+                if (!success) {
+                  result[task.item_id] = { error: 'Max retries exceeded' }
+                  console.warn(`Item ${task.item_id} failed after 3 retries`)
+                }
+
+                // 立即触发下一个任务
+                if (!hasError && !progress.isCancelled) {
+                  if (queue.length > 0 || activeCount > 0) {
+                    runWorker()
+                  } else {
+                    resolve(true)
+                  }
+                }
+              }
+            }
+
+            // 所有任务完成检测
+            if (activeCount === 0 && queue.length === 0) {
+              resolve(!hasError)
+            }
+          }
+
+          // 启动初始并发数
+          for (let i = 0; i < Math.min(concurrencyLimit, queue.length); i++) {
+            runWorker()
+          }
+        })
+      }
+      
+      function getOptimalBatchSize(size) {
+        const MAX_BATCH_SIZE = 1800 // 接口最大支持
+        const MIN_BATCH_SIZE = 30 // 保证效率，防止分片过小
+        const PREFER_BATCH_SIZE = 100
+        const PREFER_BATCH_CHUNK = 5
+        
+        const sizebase = Math.ceil(size / PREFER_BATCH_CHUNK)
+        const chunkbase = Math.ceil(size / PREFER_BATCH_SIZE)
+        
+        if (sizebase > 1800) {
+          return MAX_BATCH_SIZE
+        }
+        
+        if (sizebase < MIN_BATCH_SIZE) {
+          return MIN_BATCH_SIZE
+        }
+        
+        if (Math.abs(chunkbase - PREFER_BATCH_CHUNK) <= 1) {
+          return Math.ceil(size / chunkbase)
+        }
+        
+        if (Math.abs(sizebase - PREFER_BATCH_SIZE) <= 20) {
+          return PREFER_BATCH_SIZE
+        }
+        
+        return Math.ceil(
+          sizebase +
+          size / chunkbase
+        ) / 2
+      }
+
+      // 下载书籍
+      async function downloadBookExecutor() {
+        window.downloadResult = ''
+        const Lock = document.getElementById('download_lock')
+        const charset = document.getElementById('charset-selector').value.toLowerCase()
+        const fileformat = document.getElementById('format-selector').value.toLowerCase()
+        if (fileformat === 'epub' && charset === 'gbk') {
+          alert('EPUB格式仅支持UTF-8编码')
+          return
+        }
+        console.log(charset)
+
+        let taskId = `task_${Date.now()}`
+        let startAt = Date.now()
+        console.log(`createTask taskId=${taskId}, startAt=${startAt}`)
+        if (Lock.innerHTML.trim() !== '') {
+          console.warn(Lock.innerHTML.trim() !== '', '下载按钮重复点击')
+          return
+        } else {
+          Lock.innerHTML = taskId
+        }
+
+        const bookId = document.getElementById('book_id').innerHTML
+        if (!bookId) {
+          alert('请先选择一本书籍！')
+          return
+        }
+
+        const catalogUrl = `${apiNode}/catalog?book_id=${bookId}`
+        let catalog
+        let cssMap
+
+        try {
+          const response = await fetch(catalogUrl)
+          const rawBody = await response.json()
+          const body = normalizeApiResponse(rawBody)
+          catalog = body.data?.item_data_list
+          cssMap = body.data?.css_map
+        } catch (error) {
+          console.error('获取目录失败', error)
+        }
+
+        if (!catalog) {
+          alert('获取目录失败或目录为空')
+          console.error(catalog)
+          Lock.innerHTML = ''
+          return
+        }
+
+        let progress = showProgressWindow('下载', catalog.length)
+        progress.updateTitle('检查批量下载支持...')
+
+        const item_ids = catalog.map(item => item.item_id)
+        const result = {}
+        let cursor = 0
+
+        // 检查是否支持批量下载（仅对TXT）
+        const supportsBatchDownload = (fileformat === 'txt' && await checkBatchChapterSupport())
+
+        if (supportsBatchDownload) {
+          progress.updateTitle('使用批量下载...')
+          try {
+            let batchResult = {}
+            let ts = chunkArray(item_ids, getOptimalBatchSize(item_ids.length))
+            let promises = []
+            progress.total = ts.length
+            progress.updateProgressBar(0)
+            let curr = 0
+            for (let i of ts) {
+              promises.push(
+                (async () => {
+                  if (progress.isCancelled) return
+                  let r = await batchDownloadChapters(i)
+                  curr++
+                  progress.updateProgressBar(curr)
+                  progress.updateTitle(`第${curr}批完成，共${ts.length}批`)
+                  // console.log(r)
+                  for (let j of Object.keys(r)) {
+                    batchResult[j] = r[j]
+                    // console.log(j)
+                  }
+                })()
+              )
+            }
+            await Promise.allSettled(promises)
+            // console.log(batchResult)
+            
+            /*
+            for (let res of results) {
+              if (res.status === 'fulfilled') {
+                Object.assign(batchResult, res.value)
+              }
+            }
+            */
+            
+            // 处理批量下载结果
+            let successCount = 0
+            let failedCount = 0
+            if (progress.isCancelled) return
+            
+            for (const item_id of item_ids) {
+              const itemResult = batchResult[item_id]
+              if (itemResult && itemResult.code === 0) {
+                result[item_id] = itemResult
+                successCount++
+              } else {
+                result[item_id] = { error: itemResult?.message || '批量下载失败' }
+                failedCount++
+                console.warn(`Item ${item_id} failed in batch download:`, itemResult?.message)
+              }
+              // progress.updateProgressBar(cursor)
+            }
+            
+            console.log(`批量下载完成: 成功 ${successCount}, 失败 ${failedCount}`)
+            
+            // 如果有失败的章节，尝试单独下载
+            if (failedCount > 0) {
+              progress.updateTitle('重试失败章节...')
+              const failedIds = item_ids.filter(id => result[id]?.error)
+              await downloadFailedChapters(failedIds, result, progress, catalog)
+            }
+          } catch (err) {
+            console.error('批量下载失败，回退到逐个下载:', err)
+            // 批量下载失败时回退到原有逻辑
+            cursor = 0 // 重置进度
+            await downloadChaptersIndividually(item_ids, result, progress, catalog)
+          }
+        } else {
+          // 不支持批量下载或非TXT格式，使用原有逻辑
+          await downloadChaptersIndividually(item_ids, result, progress, catalog)
+        }
+
+        if (progress.isCancelled) {
+          return
+        }
+
+        // console.log()
+        progress.updateTitle('处理章节中...')
+        progress.total = Object.keys(result).length
+        cursor = 0
+        progress.updateProgressBar(cursor)
+        let content = ''
+        let bookData = JSON.parse(document.getElementById('book_info').innerHTML)
+
+        if (fileformat === 'epub') return await downloadEpub(result, catalog, bookData, progress, cssMap)
+
+        content += bookData.book_name + '\n'
+        content += `作者：${bookData.author}\n`
+        content += `分类：${JSON.parse(bookData.category_v2 || '[]')
+          .map(item => item.Name)
+          .join('、')}\n`
+        content += `主角：${JSON.parse(bookData.roles || '[]').join('、')}\n`
+        content += `简介：${bookData.abstract}\n`
+        content += `${bookData.copyright_info.replace('，如有任何疑问，请通过"我的-意见反馈"告知我们', '')}。\n\n\n`
+
+        let volname
+        for (let i of catalog) {
+          let data = result[i.item_id]
+          cursor++
+          if (data?.novel_data?.volume_name && volname != data.novel_data.volume_name) {
+            content += `${data.novel_data.volume_name.replace('：默认', '')}\n\n`
+            volname = data.novel_data.volume_name
+          }
+          let text =
+            `${i.title}\n\u3000\u3000` +
+            htmlToTextArray((data?.content || '<p>章节内容为空</p>').replace(new RegExp(escapeRegExp(i.title), 'g'), ''))
+              .join('\n\u3000\u3000')
+              .trim() +
+            '\n\n\n' // .replace(`${i.title}\n\u3000\u3000${i.title}`, i.title) + '\n\n\n';
+          content += text
+          progress.updateProgressBar(cursor)
+        }
+
+        progress.updateTitle('执行完成，正在保存')
+        const file = `${bookData.book_name}_${bookData.author}.txt`
+        window.downloadResult = {
+          content,
+          file,
+        }
+        progress.complete()
+        let encoded = charset === 'gbk' ? encodeGBK(content) : new TextEncoder(charset).encode(content)
+        const blob = new Blob([encoded], { type: `text/plain;charset=${charset}` })
+        saveAs(blob, file)
+        Lock.innerHTML = ''
+      }
+
+      async function getCORSAvailableAudioURL(item_id, tone_id, try_num = 0) {
+        if (try_num > 3) {
+          throw new Error('try max num')
+        }
+        try {
+          const apiUrl = `${apiNode}/audio?item_ids=${item_id}`
+          const response = await fetch(apiUrl)
+          const rawBody = await response.json()
+          const body = normalizeApiResponse(rawBody)
+          const item = body.data[0]
+          let urls = [item.main_url, item.backup_url]
+          urls = urls.filter(_ => !_.includes('://v3-'))
+          return urls[0] || getCORSAvailableAudioURL(item_id, tone_id, try_num++)
+        } catch(e) {
+          console.error(e)
+          return getCORSAvailableAudioURL(item_id, tone_id, try_num++)
+        }
+      }
+
+      async function downloadAudioExecutor() {
+        const tone_id = prompt('部分浏览器会弹出警告，网页尝试下载多个文件，请允许请求！\n请输入音色ID（对于番茄畅听类真人朗读，这个值会被忽略）: ', '1')
+        window.downloadResult = ''
+        const Lock = document.getElementById('download_lock')
+
+        let taskId = `task_${Date.now()}`
+        console.log(taskId)
+        if (Lock.innerHTML.trim() !== '') {
+          console.warn(Lock.innerHTML.trim() !== '', '下载按钮重复点击')
+          return
+        } else {
+          Lock.innerHTML = taskId
+        }
+
+        const bookId = document.getElementById('book_id').innerHTML
+        if (!bookId) {
+          alert('请先选择一本书籍！')
+          return
+        }
+
+        let catalog
+        const catalogUrl = `${apiNode}/catalog?book_id=${bookId}`
+        try {
+          const response = await fetch(catalogUrl)
+          const rawBody = await response.json()
+          const body = normalizeApiResponse(rawBody)
+          catalog = body.data?.item_data_list
+        } catch (error) {
+          console.error('获取目录失败', error)
+        }
+
+        if (!catalog) {
+          alert('获取目录失败或目录为空')
+          console.error(catalog)
+          Lock.innerHTML = ''
+          return
+        }
+      
+        const progress = showProgressWindow('下载', catalog.length, true);
+        progress.updateTitle('准备中...');
+        progress.subProgress.updateTitle('准备中');
+        
+        // 添加取消监听
+        let activeXHR = null;
+        progress.onCancel = () => {
+          console.log(activeXHR)
+          if (activeXHR) {
+            activeXHR.abort();
+            activeXHR = null;
+          }
+          Lock.innerHTML = '';
+        };
+      
+        try {
+          for (let index = 0; index < catalog.length; index++) {
+            // 检查取消状态
+            if (progress.isCancelled) {
+              console.warn('aborting...')
+              break;
+            }
+      
+            const item = catalog[index];
+            
+            // 更新主进度
+            progress.updateProgressBar(index);
+            progress.updateTitle(`缓存中: ${item.title}`);
+            
+            // 重置副进度
+            progress.subProgress.updateProgressBar(0);
+            progress.subProgress.updateTitle('等待开始...');
+      
+            // 获取下载链接
+            const aurl = await getCORSAvailableAudioURL(item.item_id, tone_id).catch(() => null);
+            if (!aurl) {
+              console.error('目录', item.item_id, item.title, '解析失败');
+              continue;
+            }
+
+            // 创建下载任务
+            const { promise, xhr } = createDownloadTask(aurl, item, progress);
+            activeXHR = xhr; // 保存当前XHR引用
+
+            try {
+              await promise;
+              progress.updateProgressBar(index + 1);
+            } catch (e) {
+              if (e.name !== 'AbortError') {
+                console.error(`下载失败: ${item.title}`, e);
+              }
+              if (progress.isCancelled) break;
+            }
+          }
+        } finally {
+          activeXHR = null;
+          if (!progress.isCancelled) {
+            progress.updateTitle('完成');
+            progress.complete(false);
+          }
+          Lock.innerHTML = '';
+        }
+      }
+
+      // 创建下载任务
+      function createDownloadTask(url, item, progress) {
+        const callback = {
+          ptext: '',
+          stext: '',
+          onProgress(recv, total) {
+            this.ptext = `${formatSize(recv)}/${formatSize(total)}`;
+            progress.subProgress.updateProgressBar(Math.ceil(recv / total * 100));
+            progress.subProgress.updateTitle(`${this.ptext} | ${this.stext}`);
+          },
+          onNetSpeed(bps) {
+            this.stext = formatSpeed(bps);
+            progress.subProgress.updateTitle(`${this.ptext} | ${this.stext}`);
+          },
+          onComplete: () => {},
+          onError: () => {}
+        };
+      
+        const { xhr, promise } = downloadFile(url, `${item.title}.mp3`, callback);
+      
+        const wrappedPromise = promise.catch((e) => {
+          if (e.name !== 'AbortError') throw e;
+        });
+      
+        return { promise: wrappedPromise, xhr };
+      }
+
+      async function downloadBook() {
+        const typeSelector = document.getElementById('type-selector')
+        let startAt = Date.now()
+        const dlType = typeSelector.value || 'text'
+        let ret
+        try {
+          switch (dlType) {
+            case 'text':
+              ret = await downloadBookExecutor()
+              break
+            case 'audio':
+              ret = await downloadAudioExecutor()
+              break
+            default:
+              console.error('Unknown download type: ', dlType)
+              return
+          }
+        } catch (e) {
+          console.error(e)
+        }
+        console.log(`Executor end: total=${Date.now() - startAt}ms`)
+      }
+
+      function reSave() {
+        // 检查 window.downloadResult 是否存在
+        if (!window.downloadResult) {
+          console.error('window.downloadResult is not defined.')
+          return
+        }
+
+        alert('请全选新页面内容进行手动保存')
+        // 打开新的空白页面
+        const newWindow = window.open()
+
+        if (newWindow) {
+          newWindow.document.write(`<pre>${window.downloadResult.content}</pre>`) // 显示文本内容
+          newWindow.document.close()
+        } else {
+          console.error('Failed to open a new window.')
+        }
+      }
+
+      function reDownload() {
+        const charset = document.getElementById('charset-selector').value.toLowerCase()
+        let encoded =
+          charset === 'gbk' ? encodeGBK(window.downloadResult.content) : new TextEncoder(charset).encode(window.downloadResult.content)
+        const blob = new Blob([encoded], { type: `text/plain;charset=${charset}` })
+        saveAs(blob, window.downloadResult.file)
+      }
+
+      function getAllTextElements(element, textArray) {
+        // 获取当前元素的所有子节点
+        const childNodes = element.childNodes
+
+        // 遍历每一个子节点
+        childNodes.forEach(node => {
+          // 如果是文本节点，将其内容加入到数组中
+          if (node.nodeType === Node.TEXT_NODE) {
+            textArray.push(node.textContent.trim())
+          } else if (node.nodeType === Node.ELEMENT_NODE) {
+            // 如果是元素节点，递归调用该函数处理其子元素
+            getAllTextElements(node, textArray)
+          }
+        })
+      }
+
+      function htmlToTextArray(html) {
+        // 创建一个div，用于存放html内容
+        const div = document.createElement('div')
+
+        // 修改div的内容为给定的html
+        div.innerHTML = html
+
+        // 获取div中的所有文本内容
+        let textArray = []
+        getAllTextElements(div, textArray)
+
+        return textArray
+      }
+
+      // 已弃用
+      async function multiDownloadExecutor(book_id, item_ids, depth = 0) {
+        if (!item_ids.length) {
+          return {}
+        }
+        if (depth > 3) {
+          alert('下载失败')
+          throw new Error('try max num')
+        }
+        try {
+          const response = await fetch(`${apiNode}/multi-content?book_id=${book_id}&item_ids=${item_ids.join(',')}`)
+          const result = await response.json()
+          // console.log(item_ids, result)
+          return result.data
+        } catch (err) {
+          console.warn('error downloading...', book_id, item_ids, 'retry', depth)
+          return await multiDownloadExecutor(book_id, item_ids, depth + 1)
+        }
+      }
+
+      function showProgressWindow(title, total, showSubProgress) {
+        const progressModal = document.getElementById('progress-modal')
+        const progressBarFill = document.getElementById('progress-bar-fill')
+        const progressPercentage = document.getElementById('progress-percentage')
+        const progressCount = document.getElementById('progress-count')
+        const progressTitle = document.getElementById('progress-title')
+        const progressCancelBtn = document.getElementById('progress-cancel')
+        const progressSubmitBtn = document.getElementById('progress-submit')
+        const resaveButton = document.getElementById('button-resave')
+        const redlButton = document.getElementById('button-redownload')
+        const subProgressModal = document.getElementById('sub-progress')
+        const subProgressBarFill = document.getElementById('sub-progress-bar-fill')
+        const subProgressTitle = document.getElementById('sub-progress-title')
+
+        // 显示进度窗口
+        progressModal.style.display = 'flex'
+        progressTitle.textContent = title
+        progressCount.textContent = `0/${total}`
+        progressPercentage.textContent = '0%'
+        progressBarFill.style.width = '0%'
+        if (showSubProgress) {
+          subProgressModal.style = ''
+        } else {
+          // 必须要加这一步，不然第二次下载不显示副进度条的时候会显示一个空的副进度条
+          subProgressModal.style.display = 'none'
+        }
+
+        let isCancelled = false
+        // 操作对象
+        const subProgress = {
+          updateTitle(title) {
+            subProgressTitle.textContent = title
+          },
+          updateProgressBar(fillPercent) {
+            subProgressBarFill.style.width = `${fillPercent}%`
+          }
+        }
+        const obj = {
+          total,
+          title,
+          isCancelled,
+          subProgress,
+          updateTitle(title) {
+            const progressTitle = document.getElementById('progress-title')
+            progressTitle.textContent = title
+            this.title = title
+          },
+          updateProgressBar(current) {
+            if (this.isCancelled) return
+
+            const percentage = ((current / this.total) * 100).toFixed(2)
+            progressBarFill.style.width = `${percentage}%`
+            progressPercentage.textContent = `${percentage}%`
+            progressCount.textContent = `${current}/${this.total}`
+          },
+          cancel() {
+            this.isCancelled = true
+            progressModal.style.display = 'none'
+            document.getElementById('download_lock').innerHTML = ''
+            progressCancelBtn.style = ''
+            progressSubmitBtn.style.display = 'none'
+            redlButton.style.display = 'none'
+            resaveButton.style.display = 'none'
+            subProgressModal.style.display = 'none'
+            if (this.onCancel) this.onCancel()
+          },
+          complete(allowResave = true) {
+            progressSubmitBtn.style = ''
+            if (allowResave) {
+              resaveButton.style = ''
+              redlButton.style = ''
+            }
+            progressCancelBtn.style.display = 'none'
+            subProgressModal.style.display = 'none'
+          },
+          finish() {
+            progressModal.style.display = 'none'
+            progressCancelBtn.style = ''
+            progressSubmitBtn.style.display = 'none'
+            redlButton.style.display = 'none'
+            resaveButton.style.display = 'none'
+            document.getElementById('download_lock').innerHTML = ''
+          },
+        }
+
+        // 按钮事件
+        progressCancelBtn.onclick = () => {
+          obj.cancel()
+        }
+        progressSubmitBtn.onclick = () => {
+          obj.finish()
+        }
+
+        return obj
+      }
+
+      function downloadFile(url, filename, callback) {
+        // 参数标准化处理
+        if (typeof filename === 'object' || typeof filename === 'function') {
+          callback = filename;
+          filename = null;
+        }
+        callback = callback || {};
+      
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.responseType = 'blob';
+        xhr.withCredentials = false;
+      
+        let currentLoaded = 0;
+        let lastLoaded = 0;
+        let lastTime = Date.now();
+        let netSpeedTimer = null;
+      
+        xhr.onprogress = (event) => {
+          currentLoaded = event.loaded;
+          callback.onProgress?.(event.loaded, event.lengthComputable ? event.total : 0);
+        };
+      
+        netSpeedTimer = setInterval(() => {
+          const now = Date.now();
+          const timeDiff = (now - lastTime) / 1000;
+          if (timeDiff > 0) {
+            const speed = (currentLoaded - lastLoaded) / timeDiff;
+            callback.onNetSpeed?.(speed);
+            lastLoaded = currentLoaded;
+            lastTime = now;
+          }
+        }, 500);
+      
+        const promise = new Promise((resolve, reject) => {
+          xhr.onload = () => {
+            clearInterval(netSpeedTimer);
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const blob = xhr.response;
+                const urlObject = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = urlObject;
+                a.download = filename || getFilenameFromHeaders(xhr) || getFilenameFromUrl(url);
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(urlObject);
+                  callback.onComplete?.();
+                  resolve();
+                }, 300);
+              } catch (e) {
+                callback.onError?.(e);
+                reject(e);
+              }
+            } else {
+              handleError(new Error(`HTTP Error ${xhr.status}`));
+            }
+          };
+      
+          const handleError = (e) => {
+            clearInterval(netSpeedTimer);
+            callback.onError?.(e);
+            reject(e);
+          };
+      
+          xhr.onabort = () => handleError(new DOMException('Aborted', 'AbortError'));
+          xhr.onerror = handleError;
+        });
+      
+        xhr.send();
+      
+        return { xhr, promise }; // 返回xhr和promise
+      }
+
+      // 从响应头获取文件名
+      function getFilenameFromHeaders(xhr) {
+        try {
+          const disposition = xhr.getResponseHeader('Content-Disposition') || '';
+          const filename = disposition.split('filename=')[1]?.split(/[;,\r\n]/)[0];
+          return filename ? filename.replace(/^['"]|['"]$/g, '') : null;
+        } catch {
+          return null;
+        }
+      }
+      
+      function formatSize(bytes) {
+        if (bytes === 0) return '0 B'
+        const units = ['B', 'KB', 'MB', 'GB']
+        const i = Math.floor(Math.log(bytes) / Math.log(1024))
+        return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`
+      }
+      
+      function formatSpeed(bytesPerSecond) {
+        if (bytesPerSecond > 1024 * 1024) {
+          return `${(bytesPerSecond / 1024 / 1024).toFixed(2)} MB/s`
+        }
+        return `${(bytesPerSecond / 1024).toFixed(2)} KB/s`
+      }
+
+      // 从URL路径获取文件名
+      function getFilenameFromUrl(url) {
+        try {
+          return new URL(url).pathname.split('/').pop() || 'download';
+        } catch {
+          return 'download';
+        }
+      }
+
+      const bookNameDialog = document.getElementById('internal-alert')
+      bookNameDialog.addEventListener('click', event => {
+        const content = bookNameDialog.querySelector('.internal-alert-container')
+        const rect = content.getBoundingClientRect()
+        const isOutside = event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom
+        if (isOutside) bookNameDialog.close()
+      })
+      document.getElementById('book-title').onclick = () => {
+        bookNameDialog.showModal()
+      }
+
+      // 页面加载完成后执行初始化
+      document.addEventListener('DOMContentLoaded', function() {
+        restoreFromUrlParams()
+      })
+
+      // 监听浏览器前进/后退按钮
+      window.addEventListener('popstate', function(event) {
+        restoreFromUrlParams()
+      })
+
+      console.log(`hello ^(。･ω･。)^`)
+      console.log('apiNode', apiNode)
+      console.log('saveAs', saveAs)
+      console.log('encodeGBK', encodeGBK)
+      console.log('EpubSaver', EpubSaver)
+    </script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        transition: background-color 0.3s, color 0.3s;
+      }
+
+      :root {
+        --bg-color: #fffafe;
+        --text-color: #000;
+        --button-bg: #69b3f0;
+        --button-text: #fff;
+        --button-hover-bg: #58a2e9;
+        --info-bg: #f9f9f9;
+        --download-bg: #28a745;
+        --download-text: #fff;
+        --download-hover-bg: #1e7e34;
+        --toggle-bg: #6c757d;
+        --toggle-text: #fff;
+        --toggle-hover-bg: #5a6268;
+        --jump-text: #8898ff;
+      }
+
+      [data-theme='dark'] {
+        --bg-color: #121212;
+        --text-color: #e0e0e0;
+        --button-bg: #3498db;
+        --button-text: #fff;
+        --button-hover-bg: #2980b9;
+        --info-bg: #1e1e1e;
+        --download-bg: #4caf50;
+        --download-text: #fff;
+        --download-hover-bg: #3e8e41;
+        --toggle-bg: #95a5a6;
+        --toggle-text: #fff;
+        --toggle-hover-bg: #7f8c8d;
+        --jump-text: #c3cbff;
+      }
+
+      #title {
+        text-align: center;
+        padding: 20px;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .search-form {
+        display: flex;
+        justify-content: center;
+        /* width: 800px; */
+        margin-bottom: 20px;
+      }
+
+      .search-form input {
+        padding: 10px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 0 0 0 0;
+        /* width: 250px; */
+        /* max-width: 85%; */
+        transition: width 0.3s;
+      }
+
+      .search-form button {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        width: 40%;
+        max-width: 80px;
+        background-color: var(--button-bg);
+        color: var(--button-text);
+        border-radius: 0 15px 15px 0;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .search-form select {
+        padding: 0 5px;
+        font-size: 16px;
+        border: none;
+        width: 40%;
+        min-width: 70px;
+        background-color: var(--button-bg);
+        color: var(--button-text);
+        border-radius: 15px 0 0 15px;
+        transition: background-color 0.3s;
+        text-align: left;
+      }
+
+      a {
+        color: var(--jump-text);
+      }
+
+      .search-form button:hover {
+        background-color: var(--button-hover-bg);
+      }
+
+      .book-list {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 90%;
+        max-width: 600px;
+      }
+
+      .book-item {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+        cursor: pointer;
+      }
+
+      .book-item:hover {
+        background-color: #777;
+      }
+
+      .book-info {
+        display: none;
+        flex-direction: row;
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        padding: 20px;
+        width: 60%;
+        background-color: var(--info-bg);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 20px;
+        transition: background-color 0.3s;
+      }
+
+      .book-info img {
+        display: flex;
+        max-width: 40%;
+        border-radius: 10px;
+        margin-right: 20px;
+      }
+
+      .book-info h2 {
+        margin: 0 0 10px;
+      }
+
+      .book-info p {
+        margin: 5px 0;
+        text-align: justify;
+      }
+
+      .book-info .download-btn {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        background-color: var(--download-bg);
+        color: var(--download-text);
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .book-info .download-btn:hover {
+        background-color: var(--download-hover-bg);
+      }
+
+      .book-info .charset-selector {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        background-color: var(--download-bg);
+        color: var(--download-text);
+        border-radius: 5px;
+      }
+
+      .internal-alert {
+        outline: none;
+        border: 1px solid #ccc;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        width: 75%;
+        height: 55%;
+        background: var(--bg-color);
+        border-radius: 8px;
+      }
+      .internal-alert-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        color: var(--text-color);
+        /*
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        */
+      }
+
+      .toggle-theme {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px;
+        font-size: 16px;
+        border: none;
+        background-color: var(--toggle-bg);
+        color: var(--toggle-text);
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .toggle-theme:hover {
+        background-color: var(--toggle-hover-bg);
+      }
+
+      .book-info-container {
+        flex: 1;
+      }
+
+      @media (orientation: portrait) {
+        .internal-alert {
+          height: 75% !important;
+        }
+        .book-info {
+          width: 90%;
+          flex-direction: column;
+        }
+        .book-info img {
+          max-width: 100%;
+          border-radius: 10px;
+          margin-bottom: 10px;
+        }
+      }
+
+      .progress-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+
+      .progress-box {
+        background: var(--bg-color);
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        width: 300px;
+      }
+
+      .progress-title {
+        position: relative;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        width: 100%;
+      }
+
+      .progress-bar {
+        width: 100%;
+        background: #f3f3f3;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 10px;
+      }
+
+      .progress-bar-fill {
+        height: 20px;
+        background: #4caf50;
+        width: 0%;
+        transition: width 0.2s;
+      }
+
+      .progress-text {
+        margin-bottom: 10px;
+      }
+
+      .progress-cancel {
+        padding: 5px 10px;
+        background: #ff5722;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .button-resave,
+      .button-redownload,
+      .progress-submit {
+        padding: 5px 10px;
+        background: var(--download-bg);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .button-resave:hover,
+      .button-redownload:hover,
+      .progress-submit:hover {
+        background: var(--download-hover-bg);
+      }
+      
+      .footer {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+      }
+
+      .about-container {
+        text-align: center;
+        max-width: 75%;
+      }
+
+      .about-text {
+        color: #878787;
+        margin: 0;
+      }
+    </style>
+  </body>
+</html>
