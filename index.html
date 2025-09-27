@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>笑的主页</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Nunito', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f9f7fe, #e4e1f2, #d6d3eb);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: hidden;
+            position: relative;
+            margin: 0;
+            background: none;
+        }
+
+        /* 原装饰元素已移除 */
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 25px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            text-align: center;
+            backdrop-filter: blur(8px);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: visible;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: linear-gradient(45deg, #ff9a9e, #fad0c4, #a1c4fd, #c2e9fb);
+            z-index: -1;
+            filter: blur(20px);
+            opacity: 0.4;
+            animation: gradient 12s ease infinite;
+            background-size: 400% 400%;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .avatar-container {
+            position: relative;
+            margin: -85px auto 20px;
+            width: 154px;
+            height: 154px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff9a9e, #fad0c4, #a1c4fd, #c2e9fb);
+            padding: 3px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            animation: gradientBorder 8s ease infinite;
+            background-size: 300% 300%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3;
+        }
+
+        @keyframes gradientBorder {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .avatar {
+            width: 148px;
+            height: 148px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid white;
+            display: block;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .name {
+            font-size: 32px;
+            color: #5a67d8;
+            margin-bottom: 8px;
+            font-weight: 800;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.05);
+            letter-spacing: 1px;
+        }
+
+        .bio {
+            color: #4a5568;
+            margin-bottom: 25px;
+            font-size: 16px;
+            line-height: 1.6;
+            padding: 0 15px;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 20px;
+            border-radius: 16px;
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            border: none;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(-100%);
+            transition: transform 0.4s ease;
+            z-index: -1;
+        }
+
+        .btn:hover::before {
+            transform: translateX(0);
+        }
+
+        .btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
+        }
+
+        .btn-red {
+            background: linear-gradient(to right, #ff6b6b, #ff8e8e);
+        }
+
+        .btn-pink {
+            background: linear-gradient(to right, #ff9a9e, #fbc2eb);
+        }
+
+        .btn-purple {
+            background: linear-gradient(to right, #b8a1e0, #a18cd1);
+        }
+
+        /* 修改后的按钮样式 */
+        .btn-light-pink {
+            background: linear-gradient(to right, #B8A1E0, #FF6B6B, #FFFFFF);
+        }
+        .btn-blue {
+            background: linear-gradient(to right, #64b3f4, #90d7ff);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            padding: 35px;
+            border-radius: 25px;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+            max-width: 420px;
+            width: 90%;
+            position: relative;
+            animation: modalAppear 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes modalAppear {
+            from { transform: translateY(-50px) scale(0.9); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .modal-title {
+            font-size: 26px;
+            margin-bottom: 20px;
+            color: #5a67d8;
+            font-weight: 800;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+
+        .modal-btn {
+            padding: 14px 28px;
+            border-radius: 14px;
+            border: none;
+            font-weight: 700;
+            cursor: button;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 150px;
+        }
+
+        .modal-btn i {
+            margin-right: 8px;
+            font-size: 18px;
+        }
+
+        .modal-btn-primary {
+            background: linear-gradient(to right, #64b3f4, #90d7ff);
+            color: white;
+        }
+
+        .modal-btn-secondary {
+            background: linear-gradient(to right, #ff9a9e, #fbc2eb);
+            color: white;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.18);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: rgba(90, 103, 216, 0.8);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .heart {
+            color: #ff6b6b;
+            animation: heartbeat 1.5s infinite;
+            display: inline-block;
+        }
+
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            5% { transform: scale(1.2); }
+            10% { transform: scale(1); }
+            15% { transform: scale(1.3); }
+            20% { transform: scale(1); }
+        }
+
+        /* 粒子画布样式 */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.5;
+            transition: opacity 0.5s ease;
+        }
+        .darkmode #particle-canvas {
+            opacity: 0.8;
+        }
+
+        @media (max-width: 500px) {
+            .card {
+                padding: 25px 20px;
+            }
+            
+            .avatar-container {
+                width: 120px;
+                height: 120px;
+                margin-top: -60px;
+            }
+            
+            .avatar {
+                width: 116px;
+                height: 116px;
+                border: 2px solid white;
+            }
+            
+            .name {
+                font-size: 28px;
+            }
+            
+            .btn {
+                padding: 13px 18px;
+                font-size: 15px;
+            }
+            
+            .modal-buttons {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .modal-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 粒子画布容器 -->
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="container">
+        <div class="card">
+            <div class="avatar-container">
+                <img src="https://www.helloimg.com/i/2025/09/20/68ce1750109da.jpg" alt="笑" class="avatar">
+
+
+            </div>
+            
+            <h1 class="name">笑</h1>
+            <p class="bio">欢迎来到我的小天地，一起探索有趣的世界吧！</p>
+            
+            <div class="buttons">
+                <a href="http://get163music.netlify.app" class="btn btn-red">
+                    <i class="fab fa-napster"></i>网易云音乐解析
+                </a>
+                
+                <a href="http://bilipalav.netlify.app" class="btn btn-pink">
+                    <i class="fab fa-bilibili"></i>哔哩哔哩视频解析
+                </a>
+                
+                <a href="http://nzjsb.netlify.app" class="btn btn-purple">
+                    <i class="fas fa-brain"></i>弱智吧话题
+                </a>
+                
+                <!-- 修改后的按钮 -->
+                <a href="https://staggeringbeauty.netlify.app" class="btn btn-light-pink">
+                    <i class="fas fa-star"></i>Staggering Beauty
+                </a>
+                
+                <a href="#" class="btn btn-blue" id="qqGroupBtn">
+                    <i class="fab fa-qq"></i>加入QQ群
+                </a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            用心创造 <span class="heart">❤</span> 精彩无限
+        </div>
+    </div>
+
+    <!-- QQ群加入模态框 -->
+    <div class="modal" id="qqModal">
+        <div class="modal-content">
+            <h2 class="modal-title">加入QQ群</h2>
+            <p>请选择加入QQ群的方式：</p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-primary" id="oneKeyJoin">
+                    <i class="fas fa-bolt"></i>一键加群
+                </button>
+                <button class="modal-btn modal-btn-secondary" id="redirectJoin">
+                    <i class="fas fa-external-link-alt"></i>跳转加群
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 粒子系统实现
+        class Particle {
+            constructor(x, y, theme) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 3 + 1;
+                this.speedX = Math.random() * 2 - 1;
+                this.speedY = Math.random() * 2 - 1;
+                this.color = theme === 'dark' ? 
+                    `hsla(${Math.random() * 60 + 200}, 70%, 50%, 0.7)` : 
+                    `hsla(${Math.random() * 60 + 30}, 80%, 60%, 0.7)`;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
+                if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // 初始化画布
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = [];
+        let currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+        // 生成粒子
+        function initParticles(theme) {
+            particles = [];
+            const particleCount = window.innerWidth / 7;
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    theme
+                ));
+            }
+        }
+
+        // 动画循环
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw(ctx);
+            });
+            requestAnimationFrame(animate);
+        }
+
+        // 监听系统主题变化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            currentTheme = e.matches ? 'dark' : 'light';
+            initParticles(currentTheme);
+        });
+
+        // 窗口大小调整
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            initParticles(currentTheme);
+        });
+
+        // 初始化
+        initParticles(currentTheme);
+        animate();
+
+        // 原有交互功能保持不变
+        const qqGroupBtn = document.getElementById('qqGroupBtn');
+        const qqModal = document.getElementById('qqModal');
+        const oneKeyJoin = document.getElementById('oneKeyJoin');
+        const redirectJoin = document.getElementById('redirectJoin');
+
+        qqGroupBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            qqModal.style.display = 'flex';
+        });
+
+        oneKeyJoin.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.target = '_blank';
+            link.href = 'https://qm.qq.com/cgi-bin/qm/qr?k=COr0710KNWrJ0j8gIZDVK_5cW12A-qpl&jump_from=webapi&authKey=SFr8pp0YDq7K4wcHZ55AEPUcXK2cp4sZj0UTDKsTA8sNu+EDVoIJEcS+Tlx3UpD+';
+            link.click();
+            qqModal.style.display = 'none';
+        });
+
+        redirectJoin.addEventListener('click', () => {
+            window.open('http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=Zi2CEtZ41-56IXjJAqc7bGhhRJun1Cm8&authKey=SU7YYWI%2B6zr664YPA9NFBBNPOYtDQArWMrO9utqy%2Bjl0IdE%2FqEAAhqvj3psJxRji&noverify=0&group_code=873543261', '_blank');
+            qqModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target === qqModal) qqModal.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
