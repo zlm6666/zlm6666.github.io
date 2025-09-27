@@ -1,0 +1,2 @@
+[functions]
+  directory = "mtp/ebook" # 你的函数所在的文件夹（proxy.js 在这里面）
