@@ -1,7 +1,5 @@
 [functions]
   directory = "mtp/ebook"
-
-[[functions]]
-  path = "/mtp/ebook/proxy"
-  handler = "proxy.handler"
-
+  routes = [
+    { path = "/mtp/ebook/proxy", handler = "proxy.handler" }
+  ]
