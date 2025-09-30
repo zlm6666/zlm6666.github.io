@@ -1,77 +1,76 @@
-// 1. 引入Node.js原生模块（无需安装任何依赖）
-const https = require('https');
-const { URL } = require('url');
+const fetch = require('node-fetch');
 
-// 2. 导出Netlify函数的处理逻辑
-exports.handler = async (event) => {
+exports.handler = async function(event, context) {
   try {
-    // --------------------------
-    // 【关键配置】必须改对！
-    // --------------------------
-    const TARGET_API = 'https://ikun.laoguantx.top:4390'; // ✅ 真实要访问的API地址（不是你自己的Netlify站点！）
-    const PROXY_PREFIX = '/.netlify/functions/proxy';             // ✅ 前端请求的路径前缀（必须和访问的一致）
-    // --------------------------
-
-    // 3. 提取前端请求中的「真实API路径+参数」（去掉代理前缀）
-    // 例如：前端请求 /mtp/ebook/proxy/rabb?canshu=111 → 提取出 /rabb?canshu=111
-    const apiPath = event.path.replace(PROXY_PREFIX, '');
-
-    // 4. 构造目标API的完整URL（拼接路径和参数）
-    const targetUrl = new URL(apiPath, TARGET_API);
-
-    // 5. 准备转发请求的配置（hostname、端口、路径、方法、请求头）
-    const options = {
-      hostname: targetUrl.hostname,       // 目标API的主机名（ikun.laoguantx.top）
-      port: targetUrl.port || 443,        // 目标API的端口（HTTPS默认443，你的API是4390会自动用4390）
-      path: `${targetUrl.pathname}${targetUrl.search}`, // 完整路径+参数（/rabb?canshu=111）
-      method: event.httpMethod,           // 前端请求的方法（GET/POST/PUT等）
-      headers: { ...event.headers },      // 保留前端的请求头（保持一致性）
-    };
-
-    // 6. 转发请求到目标API（处理请求体和响应）
-    const response = await new Promise((resolve, reject) => {
-      // a. 向目标API发送请求
-      const req = https.request(options, (res) => {
-        let responseData = ''; // 存储目标API的响应数据
-        
-        // 收集响应数据（分块接收）
-        res.on('data', (chunk) => responseData += chunk);
-        
-        // 响应结束，解析结果
-        res.on('end', () => resolve(res));
-      });
-
-      // b. 处理请求错误（比如网络不通）
-      req.on('error', (err) => reject(err));
-
-      // c. 如果前端有请求体（比如POST/PUT），转发给目标API
-      if (event.body) {
-        req.write(event.body);
+    // 获取原始请求的路径和查询参数
+    const originalPath = event.path.replace('/.netlify/functions/proxy', '');
+    const queryString = event.queryStringParameters 
+      ? '?' + new URLSearchParams(event.queryStringParameters).toString()
+      : '';
+    
+    // 构建目标URL
+    const targetUrl = `https://ikun.laoguantx.top:4390${originalPath}${queryString}`;
+    
+    console.log('代理请求:', targetUrl);
+    
+    // 准备请求选项
+    const requestOptions = {
+      method: event.httpMethod,
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Netlify-Proxy-Function/1.0'
       }
-
-      // d. 结束请求（必须调用，否则请求不会发送）
-      req.end();
-    });
-
-    // 7. 把目标API的响应原样返回给前端
-    return {
-      statusCode: response.statusCode, // 目标API的状态码（比如200/404）
-      headers: { 
-        ...response.headers, 
-        'Content-Type': 'application/json' // 确保前端能正确解析JSON
-      },
-      body: response.data, // 目标API的响应数据（已经是字符串）
     };
-
-  } catch (err) {
-    // 8. 出错时返回友好的错误信息（方便调试）
+    
+    // 如果有请求体，添加到选项中
+    if (event.body && event.httpMethod !== 'GET' && event.httpMethod !== 'HEAD') {
+      requestOptions.body = event.body;
+      
+      // 保留原始的内容类型
+      if (event.headers['content-type']) {
+        requestOptions.headers['Content-Type'] = event.headers['content-type'];
+      }
+    }
+    
+    // 发送请求到目标服务器
+    const response = await fetch(targetUrl, requestOptions);
+    
+    // 获取响应数据
+    const data = await response.text();
+    
+    // 返回响应给客户端
     return {
-      statusCode: err.code === 'ECONNREFUSED' ? 502 : 500, // 连接失败返回502，其他错误返回500
+      statusCode: response.status,
+      headers: {
+        'Content-Type': response.headers.get('content-type') || 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: data
+    };
+    
+  } catch (error) {
+    // 返回详细的错误信息
+    console.error('代理错误:', error);
+    
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
       body: JSON.stringify({
-        error: '代理失败',
-        message: err.message, // 错误描述（比如“证书无效”）
-        details: err.code,    // 错误代码（比如“ERR_TLS_CERT_ALTNAME_INVALID”）
-      }),
+        error: true,
+        message: '代理请求失败',
+        detailedError: {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          url: event.path,
+          timestamp: new Date().toISOString()
+        }
+      }, null, 2)
     };
   }
 };
