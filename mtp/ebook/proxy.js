@@ -9,7 +9,7 @@ exports.handler = async function(event, context) {
       : '';
     
     // 构建目标URL
-    const targetUrl = `https://ikun.laoguantx.top:4390${originalPath}${queryString}`;
+    const targetUrl = `https://110.42.38.213:4390${originalPath}${queryString}`;
     
     console.log('代理请求:', targetUrl);
     
