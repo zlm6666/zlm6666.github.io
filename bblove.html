@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可以成为我的恋人吗？</title>
+    <style>
+        body {
+            background-color: #f1d5da;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .container {
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        #mainImage {
+            width: 100%;
+            max-width: 200px;
+            transition: all 0.3s ease;
+        }
+        
+        h1 {
+            font-size: 5vw;
+            color: #68495b;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .buttons {
+            position: relative;
+            min-height: 60px;
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 4vw;
+            position: relative;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        #yes {
+            background: linear-gradient(145deg, #e67c8c, #c75e6d);
+            color: white;
+            z-index: 3;
+        }
+        
+        #no {
+            background: linear-gradient(145deg, #7898d7, #677fae);
+            color: white;
+            z-index: 2;
+        }
+        
+        .yes-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #ffdae0, #ffc0cb);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        
+        .yes-text {
+            font-size: 7vw;
+            color: #d44d65;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .yes-image {
+            width: 50%;
+            max-width: 300px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @media (min-width: 768px) {
+            body {
+                display: block;
+            }
+            
+            .container {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: auto;
+                max-width: none;
+            }
+            
+            #mainImage {
+                width: 200px;
+            }
+            
+            h1 {
+                font-size: 28px;
+            }
+            
+            button {
+                font-size: 18px;
+                padding: 15px 35px;
+            }
+            
+            .yes-text {
+                font-size: 36px;
+            }
+            
+            .yes-image {
+                width: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <img id="mainImage" src="https://fb-cdn.fanbook.cn/fanbook/app/files/chatroom/image/4b1e5b1242b03ebf7f5f35016b2e2c85.jpg" alt="爱心">
+        <h1 id="question">可以成为我的恋人吗？</h1>
+        <div class="buttons">
+            <button id="yes">可以</button>
+            <button id="no">不行</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const yesButton = document.getElementById("yes");
+            const noButton = document.getElementById("no");
+            const questionText = document.getElementById("question");
+            const mainImage = document.getElementById("mainImage");
+            const container = document.querySelector('.container');
+            
+            let clickCount = 0;
+            const noTexts = [
+                "？你认真的吗…", 
+                "要不再想想？", 
+                "不许选这个！", 
+                "我会很伤心…", 
+                "不行:("
+            ];
+            
+            // 辅助函数：获取随机位置并确保按钮可见
+            function getRandomPosition() {
+                const screenWidth = window.innerWidth;
+                const screenHeight = window.innerHeight;
+                
+                // 获取按钮尺寸
+                const buttonWidth = noButton.offsetWidth;
+                const buttonHeight = noButton.offsetHeight;
+                
+                // 计算安全边界
+                const safeArea = {
+                    minX: buttonWidth / 2,
+                    maxX: screenWidth - buttonWidth * 1.5,
+                    minY: buttonHeight / 2,
+                    maxY: screenHeight - buttonHeight * 1.5
+                };
+                
+                return {
+                    x: Math.floor(Math.random() * (safeArea.maxX - safeArea.minX) + safeArea.minX),
+                    y: Math.floor(Math.random() * (safeArea.maxY - safeArea.minY) + safeArea.minY)
+                };
+            }
+            
+            // 确保前5次点击至少部分可见
+            function isButtonPartiallyVisible(noPos, yesRect) {
+                const noRect = {
+                    left: noPos.x,
+                    top: noPos.y,
+                    right: noPos.x + noButton.offsetWidth,
+                    bottom: noPos.y + noButton.offsetHeight
+                };
+                
+                // 检查是否完全被覆盖
+                return !(
+                    noRect.left >= yesRect.left &&
+                    noRect.right <= yesRect.right &&
+                    noRect.top >= yesRect.top &&
+                    noRect.bottom <= yesRect.bottom
+                );
+            }
+            
+            noButton.addEventListener("click", function() {
+                clickCount++;
+                
+                // 让"可以"按钮适度放大（1.1倍）
+                const yesSize = Math.min(2.5, 1 + (clickCount * 0.1));
+                yesButton.style.transform = `scale(${yesSize})`;
+                
+                // 获取并确保按钮位置
+                const yesRect = yesButton.getBoundingClientRect();
+                
+                let validPosition = false;
+                let attempts = 0;
+                let newPosition;
+                
+                do {
+                    newPosition = getRandomPosition();
+                    
+                    // 前5次点击需要确保至少部分可见
+                    if (clickCount <= 5) {
+                        validPosition = isButtonPartiallyVisible(newPosition, yesRect);
+                    } else {
+                        validPosition = true;
+                    }
+                    
+                    attempts++;
+                } while (!validPosition && attempts < 20);
+                
+                // 应用新位置
+                noButton.style.position = "fixed";
+                noButton.style.left = `${newPosition.x}px`;
+                noButton.style.top = `${newPosition.y}px`;
+                
+                // 图片和文字上移效果
+                const moveUp = Math.min(100, clickCount * 15);
+                mainImage.style.transform = `translateY(-${moveUp}px)`;
+                questionText.style.transform = `translateY(-${moveUp}px)`;
+                
+                // 文字变化
+                if (clickCount <= noTexts.length) {
+                    noButton.innerText = noTexts[clickCount - 1];
+                }
+                
+                // 图片变化
+                const images = [
+                    "https://fb-cdn.fanbook.cn/fanbook/app/files/chatroom/image/53b9fc59e65a60121da54717317cdf40.jpg", // 震惊
+                    "https://fb-cdn.fanbook.cn/fanbook/app/files/chatroom/image/817724ba4a9990d3fbda96b011ea6d31.jpg", // 思考
+                    "https://fb-cdn.fanbook.cn/fanbook/app/files/chatroom/image/8013d75b2a35d816a075cea1e01b70fa.jpg", // 生气
+                    "https://fb-cdn.fanbook.cn/fanbook/app/files/chatroom/image/c6c524421183c7705d9e65c6e8b067cc.jpg", // 哭
+                    "https://fb-cdn.fanbook.cn/fanbook/app/files/chatroom/image/c6c524421183c7705d9e65c6e8b067cc.jpg"  // 哭
+                ];
+                
+                if (clickCount <= images.length) {
+                    mainImage.src = images[clickCount - 1];
+                }
+            });
+            
+            yesButton.addEventListener("click", function() {
+                document.body.innerHTML = `
+                    <div class="yes-screen">
+                        <h1 class="yes-text">!!!喜欢你!! ( >᎑<)♡︎ᐝ</h1>
+                        <img src="https://fb-cdn.fanbook.cn/fanbook/app/files/chatroom/image/bcc83c8ce9cc3c2af692bcb57d0c0e75.jpg" alt="拥抱" class="yes-image">
+                    </div>
+                `;
+                document.body.style.overflow = "hidden";
+            });
+        });
+    </script>
+</body>
+
+</html>
