@@ -67,7 +67,7 @@
         }
 
         .header.hidden {
-            transform: translateY(-100%);
+            transform: translateY(-100%); /* 向上隐藏 */
         }
 
         .header-title {
@@ -107,7 +107,7 @@
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            -webkit-overflow-scrolling: touch; /* 移动端流畅滚动 */
         }
 
         /* Markdown样式优化 */
@@ -117,10 +117,9 @@
         .content code { background: var(--bg-secondary); padding: 2px 4px; border-radius: 4px; }
         .content pre { background: var(--bg-secondary); padding: 1rem; border-radius: 8px; overflow-x: auto; }
         .content blockquote { border-left: 4px solid var(--progress-fill); padding-left: 1rem; margin: 1rem 0; opacity: 0.8; }
-        .content ul { margin: 1rem 0; padding-left: 2rem; }
-        .content ol { margin: 1rem 0; padding-left: 2rem; }
-        .content li { margin: 0.5rem 0; }
-        .content strong { font-weight: bold; }
+        .content ul, .content ol { margin: 1rem 0; padding-left: 2rem; }
+        .content li { margin-bottom: 0.5rem; }
+        .content strong { font-weight: 600; }
         .content em { font-style: italic; }
         .content u { text-decoration: underline; }
         .content del { text-decoration: line-through; }
@@ -142,7 +141,7 @@
         }
 
         .footer.hidden {
-            transform: translateY(100%);
+            transform: translateY(100%); /* 向下隐藏 */
         }
 
         /* 字体滑块 */
@@ -198,7 +197,7 @@
     <footer class="footer hidden"></footer>
 
     <script>
-        // Markdown解析器类
+        // 内联Markdown解析器 - 避免外部文件加载问题
         class CustomMarkdownParser {
             constructor() {
                 this.regexCache = {
@@ -223,9 +222,16 @@
             parse(markdown) {
                 if (!markdown) return '';
                 
+                // 1. 首先处理转义字符
                 let parsed = this.parseEscapes(markdown);
+                
+                // 2. 处理代码块（避免解析其中的内容）
                 parsed = this.parseCodeBlocks(parsed);
+                
+                // 3. 处理块级元素
                 parsed = this.parseBlockElements(parsed);
+                
+                // 4. 处理行内元素
                 parsed = this.parseInlineElements(parsed);
                 
                 return parsed;
@@ -246,68 +252,150 @@
             parseBlockElements(input) {
                 const lines = input.split('\n');
                 let output = [];
-                let currentBlock = '';
-
+                let inList = false;
+                let listDepth = 0;
+                let listType = ''; // 'ul' or 'ol'
+                
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i].trim();
                     
+                    // 处理空行
                     if (line === '') {
-                        if (currentBlock) {
-                            output.push(this.processBlockLine(currentBlock));
-                            currentBlock = '';
+                        if (inList) {
+                            // 结束当前列表
+                            while (listDepth > 0) {
+                                output.push('</li></ul>');
+                                listDepth--;
+                            }
+                            inList = false;
+                            listType = '';
                         }
                         output.push('');
                         continue;
                     }
-
-                    const isHeading = this.regexCache.heading.test(line);
-                    const isBlockquote = this.regexCache.blockquote.test(line);
-                    const isUnorderedList = this.regexCache.unorderedList.test(line);
-                    const isOrderedList = this.regexCache.orderedList.test(line);
-
-                    if (isHeading) {
-                        if (currentBlock) {
-                            output.push(this.processBlockLine(currentBlock));
-                            currentBlock = '';
+                    
+                    // 处理标题
+                    const headingMatch = line.match(this.regexCache.heading);
+                    if (headingMatch) {
+                        if (inList) {
+                            while (listDepth > 0) {
+                                output.push('</li></ul>');
+                                listDepth--;
+                            }
+                            inList = false;
+                            listType = '';
                         }
-                        output.push(this.parseHeading(line));
-                    } 
-                    else if (isBlockquote) {
-                        if (currentBlock) {
-                            output.push(this.processBlockLine(currentBlock));
-                            currentBlock = '';
+                        const level = headingMatch[1].length;
+                        const text = headingMatch[2];
+                        output.push(`<h${level}>${text}</h${level}>`);
+                        continue;
+                    }
+                    
+                    // 处理引用
+                    const blockquoteMatch = line.match(this.regexCache.blockquote);
+                    if (blockquoteMatch) {
+                        if (inList) {
+                            while (listDepth > 0) {
+                                output.push('</li></ul>');
+                                listDepth--;
+                            }
+                            inList = false;
+                            listType = '';
                         }
-                        output.push(this.parseBlockquote(line));
-                    } 
-                    else if (isUnorderedList) {
-                        if (currentBlock) {
-                            output.push(this.processBlockLine(currentBlock));
-                            currentBlock = '';
+                        const content = blockquoteMatch[2];
+                        output.push(`<blockquote>${content}</blockquote>`);
+                        continue;
+                    }
+                    
+                    // 处理无序列表
+                    const ulMatch = line.match(this.regexCache.unorderedList);
+                    if (ulMatch) {
+                        const depth = ulMatch[1].length;
+                        const content = ulMatch[2];
+                        
+                        if (!inList || listType !== 'ul') {
+                            if (inList) {
+                                while (listDepth > 0) {
+                                    output.push('</li></ul>');
+                                    listDepth--;
+                                }
+                            }
+                            output.push('<ul>');
+                            inList = true;
+                            listType = 'ul';
+                            listDepth = 0;
                         }
-                        output.push(this.parseUnorderedListItem(line));
-                    } 
-                    else if (isOrderedList) {
-                        if (currentBlock) {
-                            output.push(this.processBlockLine(currentBlock));
-                            currentBlock = '';
+                        
+                        // 处理嵌套
+                        if (depth > listDepth) {
+                            output.push('<li><ul>');
+                            listDepth = depth;
+                        } else if (depth < listDepth) {
+                            output.push('</ul></li>');
+                            listDepth = depth;
+                        } else if (i > 0 && ulMatch) {
+                            output.push('</li>');
                         }
-                        output.push(this.parseOrderedListItem(line));
-                    } 
-                    else {
-                        currentBlock += (currentBlock ? '\n' : '') + line;
+                        
+                        output.push(`<li>${content}`);
+                        continue;
+                    }
+                    
+                    // 处理有序列表
+                    const olMatch = line.match(this.regexCache.orderedList);
+                    if (olMatch) {
+                        const content = olMatch[2];
+                        
+                        if (!inList || listType !== 'ol') {
+                            if (inList) {
+                                while (listDepth > 0) {
+                                    output.push('</li></ol>');
+                                    listDepth--;
+                                }
+                            }
+                            output.push('<ol>');
+                            inList = true;
+                            listType = 'ol';
+                            listDepth = 1;
+                        } else {
+                            output.push('</li>');
+                        }
+                        
+                        output.push(`<li>${content}`);
+                        continue;
+                    }
+                    
+                    // 普通段落
+                    if (inList) {
+                        while (listDepth > 0) {
+                            output.push('</li></' + (listType === 'ul' ? 'ul' : 'ol') + '>');
+                            listDepth--;
+                        }
+                        inList = false;
+                        listType = '';
+                    }
+                    
+                    output.push(`<p>${line}</p>`);
+                }
+                
+                // 处理文档末尾的列表
+                if (inList) {
+                    while (listDepth >= 0) {
+                        output.push('</li>');
+                        if (listDepth > 0) {
+                            output.push('</' + (listType === 'ul' ? 'ul' : 'ol') + '>');
+                        }
+                        listDepth--;
                     }
                 }
-
-                if (currentBlock) {
-                    output.push(this.processBlockLine(currentBlock));
-                }
-
+                
                 return output.join('\n');
             }
 
             parseInlineElements(input) {
                 let parsed = input;
                 
+                // 按优先级顺序处理
                 parsed = this.parseBold(parsed);
                 parsed = this.parseItalic(parsed);
                 parsed = this.parseBoldItalic(parsed);
@@ -319,50 +407,6 @@
                 parsed = this.parseImages(parsed);
                 
                 return parsed;
-            }
-
-            processBlockLine(line) {
-                if (line.trim()) {
-                    return `<p>${this.parseInlineElements(line)}</p>`;
-                }
-                return '';
-            }
-
-            parseHeading(line) {
-                const match = line.match(this.regexCache.heading);
-                if (match) {
-                    const level = match[1].length;
-                    const text = match[2];
-                    return `<h${level}>${this.parseInlineElements(text)}</h${level}>`;
-                }
-                return line;
-            }
-
-            parseBlockquote(line) {
-                const match = line.match(this.regexCache.blockquote);
-                if (match) {
-                    const content = match[2];
-                    return `<blockquote>${this.parseInlineElements(content)}</blockquote>`;
-                }
-                return line;
-            }
-
-            parseUnorderedListItem(line) {
-                const match = line.match(this.regexCache.unorderedList);
-                if (match) {
-                    const content = match[2];
-                    return `<ul><li>${this.parseInlineElements(content)}</li></ul>`;
-                }
-                return line;
-            }
-
-            parseOrderedListItem(line) {
-                const match = line.match(this.regexCache.orderedList);
-                if (match) {
-                    const content = match[2];
-                    return `<ol><li>${this.parseInlineElements(content)}</li></ol>`;
-                }
-                return line;
             }
 
             parseBold(text) {
@@ -407,7 +451,7 @@
                         cssColor = colorMap[normalizedColor] || '#000000';
                     }
                     
-                    return `<span style="color: ${cssColor}">${this.parseInlineElements(content)}</span>`;
+                    return `<span style="color: ${cssColor}">${content}</span>`;
                 });
             }
 
@@ -416,7 +460,7 @@
             }
 
             parseImages(text) {
-                return text.replace(this.regexCache.image, '');
+                return text.replace(this.regexCache.image, '<img src="$2" alt="$1" style="max-width: 100%;">');
             }
 
             escapeHtml(text) {
@@ -426,7 +470,7 @@
             }
         }
 
-        // 应用状态管理
+        // ---------------------- 核心状态管理 ----------------------
         const state = {
             theme: localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
             fontSize: localStorage.getItem('fontSize') || '16',
@@ -434,7 +478,7 @@
             hideTimeout: null
         };
 
-        // DOM元素缓存
+        // ---------------------- DOM元素缓存 ----------------------
         const el = {
             body: document.body,
             header: document.querySelector('.header'),
@@ -445,7 +489,7 @@
             fontSizeSlider: document.getElementById('fontSizeSlider')
         };
 
-        // 初始化应用
+        // ---------------------- 初始化应用 ----------------------
         function init() {
             applyTheme(state.theme);
             applyFontSize(state.fontSize);
@@ -453,56 +497,101 @@
             bindEvents();
         }
 
-        // 主题控制
+        // ---------------------- 主题控制 ----------------------
         function applyTheme(theme) {
             el.body.setAttribute('data-theme', theme);
             el.themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
         }
 
-        // 字体控制
+        // ---------------------- 字体控制 ----------------------
         function applyFontSize(size) {
             document.documentElement.style.setProperty('--font-size', `${size}px`);
             el.fontSizeSlider.value = size;
         }
 
-        // 加载Markdown内容
+        // ---------------------- 加载Markdown内容 ----------------------
         async function loadMarkdown() {
             try {
-                const res = await fetch('./mtp/txt/test.txt');
+                // 使用示例Markdown内容，避免文件加载问题
+                const exampleMarkdown = `# Markdown阅读器示例
+
+这是一个**Markdown阅读器**的演示。
+
+## 功能特性
+
+* 支持*斜体*、**加粗**、***加粗斜体***
+* 支持_下划线_和-删除线-
+* 支持代码高亮：\`console.log("Hello")\`
+* 支持颜色标签：<red>红色文本</red> <#00FF00>绿色文本</#00FF00>
+
+## 代码块示例
+
+~~~javascript
+function hello() {
+    console.log("Hello, Markdown!");
+    return true;
+}
+~~~
+
+## 列表示例
+
++ 无序列表项1
++ 无序列表项2
+++ 嵌套列表项2.1
+++ 嵌套列表项2.2
++ 无序列表项3
+
+1. 有序列表项1
+2. 有序列表项2
+   1. 嵌套有序列表2.1
+   2. 嵌套有序列表2.2
+3. 有序列表项3
+
+> 这是一个引用块
+> 可以有多行内容
+
+[点击这里访问示例网站](https://example.com)`;
+
+                const parser = new CustomMarkdownParser();
+                el.content.innerHTML = parser.parse(exampleMarkdown);
+                
+                // 如果确实需要从文件加载，可以取消注释以下代码
+                /*
+                const res = await fetch('./mtp/txt/gg1.txt');
                 if (!res.ok) throw new Error(`加载失败：${res.status}`);
                 const mdText = await res.text();
-                const parser = new CustomMarkdownParser();
                 el.content.innerHTML = parser.parse(mdText);
+                */
             } catch (err) {
                 console.error('加载Markdown失败:', err);
                 el.content.innerHTML = `<p style="color: red;">内容加载失败：${err.message}</p>`;
             }
         }
 
-        // 事件绑定
+        // ---------------------- 事件绑定 ----------------------
         function bindEvents() {
-            // 主题切换
+            // 1. 主题切换
             el.themeToggle.addEventListener('click', () => {
                 state.theme = state.theme === 'dark' ? 'light' : 'dark';
                 localStorage.setItem('theme', state.theme);
                 applyTheme(state.theme);
             });
 
-            // 字体大小调整
+            // 2. 字体大小调整
             el.fontSizeSlider.addEventListener('input', (e) => {
                 state.fontSize = e.target.value;
                 localStorage.setItem('fontSize', state.fontSize);
                 applyFontSize(state.fontSize);
             });
 
-            // 滚动事件
+            // 3. 滚动事件（进度条+控制栏隐藏）
             window.addEventListener('scroll', handleScroll);
 
-            // 点击屏幕显示控制栏
+            // 4. 点击屏幕显示控制栏
             el.body.addEventListener('click', handleBodyClick);
         }
 
-        // 处理滚动
+        // ---------------------- 处理滚动 ----------------------
         function handleScroll() {
             const scrollTop = window.pageYOffset;
             const scrollHeight = document.documentElement.scrollHeight;
@@ -512,7 +601,7 @@
             const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
             el.progressBar.style.width = `${Math.min(progress, 100)}%`;
 
-            // 控制顶栏/底栏隐藏
+            // 控制顶栏/底栏隐藏（滑动超过10px隐藏）
             if (scrollTop > 10) {
                 el.header.classList.add('hidden');
                 el.footer.classList.add('hidden');
@@ -523,13 +612,16 @@
             }
         }
 
-        // 处理点击屏幕
+        // ---------------------- 处理点击屏幕 ----------------------
         function handleBodyClick() {
+            // 显示控制栏
             el.header.classList.remove('hidden');
             el.footer.classList.remove('hidden');
 
+            // 清除之前的定时器
             if (state.hideTimeout) clearTimeout(state.hideTimeout);
 
+            // 2秒后自动隐藏（无操作时）
             state.hideTimeout = setTimeout(() => {
                 if (!state.isScrolling) {
                     el.header.classList.add('hidden');
