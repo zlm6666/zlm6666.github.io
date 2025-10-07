@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>极简Markdown阅读器</title>
+    <!-- 导入Markdown解析库（需确保路径正确） -->
+    <script type="module">
+        // 修复1：正确导入ES6模块（原代码缺少默认导出声明）
+        import parse from './mtp/txt/markdown.js';
+        window.parseMarkdown = parse; // 暴露到全局供后续使用
+    </script>
+    <style>
+        /* 基础变量：亮色主题 */
+        :root {
+            --bg-primary: #ffffff;
+            --text-primary: #2d3748;
+            --bg-secondary: #f7fafc;
+            --border-color: #e2e8f0;
+            --progress-bg: #edf2f7;
+            --progress-fill: #4299e1;
+            --font-size: 16px;
+            --header-height: 50px;
+            --footer-height: 50px;
+            --transition: 0.3s ease;
+        }
+
+        /* 暗色主题变量 */
+        [data-theme="dark"] {
+            --bg-primary: #1a202c;
+            --text-primary: #e2e8f0;
+            --bg-secondary: #2d3748;
+            --border-color: #4a5568;
+            --progress-bg: #2d3748;
+            --progress-fill: #63b3ed;
+        }
+
+        /* 全局重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-size: var(--font-size);
+            line-height: 1.75;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-top: var(--header-height);
+            padding-bottom: var(--footer-height);
+        }
+
+        /* 顶栏样式 */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: var(--header-height);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+            transition: transform var(--transition);
+        }
+
+        .header.hidden {
+            transform: translateY(-100%); /* 向上隐藏 */
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--progress-bg);
+            z-index: 99;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--progress-fill);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        /* 内容区 */
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch; /* 移动端流畅滚动 */
+        }
+
+        /* Markdown样式优化 */
+        .content h1 { font-size: 1.5rem; margin: 1.5rem 0 1rem; }
+        .content h2 { font-size: 1.3rem; margin: 1.2rem 0 0.8rem; }
+        .content p { margin-bottom: 1rem; }
+        .content code { background: var(--bg-secondary); padding: 2px 4px; border-radius: 4px; }
+        .content pre { background: var(--bg-secondary); padding: 1rem; border-radius: 8px; overflow-x: auto; }
+        .content blockquote { border-left: 4px solid var(--progress-fill); padding-left: 1rem; margin: 1rem 0; opacity: 0.8; }
+
+        /* 底栏 */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: var(--footer-height);
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: transform var(--transition);
+        }
+
+        .footer.hidden {
+            transform: translateY(100%); /* 向下隐藏 */
+        }
+
+        /* 字体滑块 */
+        .font-slider {
+            width: 100px;
+            -webkit-appearance: none;
+            background: var(--border-color);
+            border-radius: 5px;
+            outline: none;
+        }
+
+        .font-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--progress-fill);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .header { padding: 0 15px; }
+            .content { padding: 15px; }
+            .font-slider { width: 80px; }
+        }
+
+        @media (max-width: 480px) {
+            .header-title { font-size: 16px; }
+            .control-btn { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶栏 -->
+    <header class="header">
+        <div class="header-title">阅读器</div>
+        <div class="header-controls">
+            <button class="control-btn" id="themeToggle" title="切换主题">🌙</button>
+            <input type="range" class="font-slider" id="fontSizeSlider" min="12" max="24" value="16" title="调整字体">
+        </div>
+    </header>
+
+    <!-- 进度条 -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- 内容区 -->
+    <main class="content" id="content"></main>
+
+    <!-- 底栏（仅作占位，可留空） -->
+    <footer class="footer hidden"></footer>
+
+    <script type="module">
+        // ---------------------- 核心状态管理 ----------------------
+        const state = {
+            theme: localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
+            fontSize: localStorage.getItem('fontSize') || '16',
+            isScrolling: false,
+            hideTimeout: null
+        };
+
+        // ---------------------- DOM元素缓存 ----------------------
+        const el = {
+            body: document.body,
+            header: document.querySelector('.header'),
+            footer: document.querySelector('.footer'),
+            content: document.getElementById('content'),
+            progressBar: document.getElementById('progressBar'),
+            themeToggle: document.getElementById('themeToggle'),
+            fontSizeSlider: document.getElementById('fontSizeSlider')
+        };
+
+        // ---------------------- 初始化应用 ----------------------
+        function init() {
+            applyTheme(state.theme);
+            applyFontSize(state.fontSize);
+            loadMarkdown();
+            bindEvents();
+        }
+
+        // ---------------------- 主题控制 ----------------------
+        function applyTheme(theme) {
+            el.body.setAttribute('data-theme', theme);
+            el.themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        // ---------------------- 字体控制 ----------------------
+        function applyFontSize(size) {
+            document.documentElement.style.setProperty('--font-size', `${size}px`);
+            el.fontSizeSlider.value = size;
+        }
+
+        // ---------------------- 加载Markdown内容 ----------------------
+        async function loadMarkdown() {
+            try {
+                const res = await fetch('./mtp/txt/test.txt');
+                if (!res.ok) throw new Error(`加载失败：${res.status}`);
+                const mdText = await res.text();
+                // 修复2：正确调用解析函数（原代码缺少括号）
+                el.content.innerHTML = parseMarkdown(mdText);
+            } catch (err) {
+                console.error('加载Markdown失败:', err);
+                el.content.innerHTML = `<p style="color: red;">内容加载失败：${err.message}</p>`;
+            }
+        }
+
+        // ---------------------- 事件绑定 ----------------------
+        function bindEvents() {
+            // 1. 主题切换
+            el.themeToggle.addEventListener('click', () => {
+                state.theme = state.theme === 'dark' ? 'light' : 'dark';
+                localStorage.setItem('theme', state.theme);
+                applyTheme(state.theme);
+            });
+
+            // 2. 字体大小调整
+            el.fontSizeSlider.addEventListener('input', (e) => {
+                state.fontSize = e.target.value;
+                localStorage.setItem('fontSize', state.fontSize);
+                applyFontSize(state.fontSize);
+            });
+
+            // 3. 滚动事件（进度条+控制栏隐藏）
+            window.addEventListener('scroll', handleScroll);
+
+            // 4. 点击屏幕显示控制栏
+            el.body.addEventListener('click', handleBodyClick);
+        }
+
+        // ---------------------- 处理滚动 ----------------------
+        function handleScroll() {
+            const scrollTop = window.pageYOffset;
+            const scrollHeight = document.documentElement.scrollHeight;
+            const clientHeight = document.documentElement.clientHeight;
+
+            // 更新进度条
+            const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
+            el.progressBar.style.width = `${Math.min(progress, 100)}%`;
+
+            // 控制顶栏/底栏隐藏（滑动超过10px隐藏）
+            if (scrollTop > 10) {
+                el.header.classList.add('hidden');
+                el.footer.classList.add('hidden');
+                state.isScrolling = true;
+            } else {
+                el.header.classList.remove('hidden');
+                state.isScrolling = false;
+            }
+        }
+
+        // ---------------------- 处理点击屏幕 ----------------------
+        function handleBodyClick() {
+            // 显示控制栏
+            el.header.classList.remove('hidden');
+            el.footer.classList.remove('hidden');
+
+            // 清除之前的定时器
+            if (state.hideTimeout) clearTimeout(state.hideTimeout);
+
+            // 2秒后自动隐藏（无操作时）
+            state.hideTimeout = setTimeout(() => {
+                if (!state.isScrolling) {
+                    el.header.classList.add('hidden');
+                    el.footer.classList.add('hidden');
+                }
+            }, 2000);
+        }
+
+        // 启动应用
+        init();
+    </script>
+</body>
+</html>
