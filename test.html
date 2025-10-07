@@ -4,12 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>极简Markdown阅读器</title>
-    <!-- 导入Markdown解析库（需确保路径正确） -->
-    <script type="module">
-        // 修复1：正确导入ES6模块（原代码缺少默认导出声明）
-        import parse from './mtp/txt/markdown.js';
-        window.parseMarkdown = parse; // 暴露到全局供后续使用
-    </script>
     <style>
         /* 基础变量：亮色主题 */
         :root {
@@ -73,7 +67,7 @@
         }
 
         .header.hidden {
-            transform: translateY(-100%); /* 向上隐藏 */
+            transform: translateY(-100%);
         }
 
         .header-title {
@@ -113,7 +107,7 @@
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            -webkit-overflow-scrolling: touch; /* 移动端流畅滚动 */
+            -webkit-overflow-scrolling: touch;
         }
 
         /* Markdown样式优化 */
@@ -123,6 +117,13 @@
         .content code { background: var(--bg-secondary); padding: 2px 4px; border-radius: 4px; }
         .content pre { background: var(--bg-secondary); padding: 1rem; border-radius: 8px; overflow-x: auto; }
         .content blockquote { border-left: 4px solid var(--progress-fill); padding-left: 1rem; margin: 1rem 0; opacity: 0.8; }
+        .content ul { margin: 1rem 0; padding-left: 2rem; }
+        .content ol { margin: 1rem 0; padding-left: 2rem; }
+        .content li { margin: 0.5rem 0; }
+        .content strong { font-weight: bold; }
+        .content em { font-style: italic; }
+        .content u { text-decoration: underline; }
+        .content del { text-decoration: line-through; }
 
         /* 底栏 */
         .footer {
@@ -141,7 +142,7 @@
         }
 
         .footer.hidden {
-            transform: translateY(100%); /* 向下隐藏 */
+            transform: translateY(100%);
         }
 
         /* 字体滑块 */
@@ -196,8 +197,236 @@
     <!-- 底栏（仅作占位，可留空） -->
     <footer class="footer hidden"></footer>
 
-    <script type="module">
-        // ---------------------- 核心状态管理 ----------------------
+    <script>
+        // Markdown解析器类
+        class CustomMarkdownParser {
+            constructor() {
+                this.regexCache = {
+                    escape: /\\([\\*_~#+\-])/g,
+                    bold: /\*\*([^*]+?)\*\*/g,
+                    italic: /\*([^*]+?)\*/g,
+                    boldItalic: /\*\*\*([^*]+?)\*\*\*/g,
+                    underline: /_([^_]+?)_/g,
+                    strikethrough: /-([^-]+?)-/g,
+                    heading: /^(#{1,6})\s+(.+)$/gm,
+                    blockquote: /^(>+)\s+(.+)$/gm,
+                    unorderedList: /^(\++)\s+(.+)$/gm,
+                    orderedList: /^(\d+\.)\s+(.+)$/gm,
+                    inlineCode: /~([^~]+?)~/g,
+                    codeBlock: /~~~([\s\S]*?)~~~/g,
+                    colorTag: /<([a-z0-9#]+)>([\s\S]*?)<\/\1>/gi,
+                    link: /\[([^\]]+)\]\(([^)]+)\)/g,
+                    image: /!\[([^\]]+)\]\(([^)]+)\)/g
+                };
+            }
+
+            parse(markdown) {
+                if (!markdown) return '';
+                
+                let parsed = this.parseEscapes(markdown);
+                parsed = this.parseCodeBlocks(parsed);
+                parsed = this.parseBlockElements(parsed);
+                parsed = this.parseInlineElements(parsed);
+                
+                return parsed;
+            }
+
+            parseEscapes(input) {
+                return input.replace(this.regexCache.escape, (match, char) => {
+                    return char;
+                });
+            }
+
+            parseCodeBlocks(input) {
+                return input.replace(this.regexCache.codeBlock, (match, code) => {
+                    return `<pre><code>${this.escapeHtml(code.trim())}</code></pre>`;
+                });
+            }
+
+            parseBlockElements(input) {
+                const lines = input.split('\n');
+                let output = [];
+                let currentBlock = '';
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    
+                    if (line === '') {
+                        if (currentBlock) {
+                            output.push(this.processBlockLine(currentBlock));
+                            currentBlock = '';
+                        }
+                        output.push('');
+                        continue;
+                    }
+
+                    const isHeading = this.regexCache.heading.test(line);
+                    const isBlockquote = this.regexCache.blockquote.test(line);
+                    const isUnorderedList = this.regexCache.unorderedList.test(line);
+                    const isOrderedList = this.regexCache.orderedList.test(line);
+
+                    if (isHeading) {
+                        if (currentBlock) {
+                            output.push(this.processBlockLine(currentBlock));
+                            currentBlock = '';
+                        }
+                        output.push(this.parseHeading(line));
+                    } 
+                    else if (isBlockquote) {
+                        if (currentBlock) {
+                            output.push(this.processBlockLine(currentBlock));
+                            currentBlock = '';
+                        }
+                        output.push(this.parseBlockquote(line));
+                    } 
+                    else if (isUnorderedList) {
+                        if (currentBlock) {
+                            output.push(this.processBlockLine(currentBlock));
+                            currentBlock = '';
+                        }
+                        output.push(this.parseUnorderedListItem(line));
+                    } 
+                    else if (isOrderedList) {
+                        if (currentBlock) {
+                            output.push(this.processBlockLine(currentBlock));
+                            currentBlock = '';
+                        }
+                        output.push(this.parseOrderedListItem(line));
+                    } 
+                    else {
+                        currentBlock += (currentBlock ? '\n' : '') + line;
+                    }
+                }
+
+                if (currentBlock) {
+                    output.push(this.processBlockLine(currentBlock));
+                }
+
+                return output.join('\n');
+            }
+
+            parseInlineElements(input) {
+                let parsed = input;
+                
+                parsed = this.parseBold(parsed);
+                parsed = this.parseItalic(parsed);
+                parsed = this.parseBoldItalic(parsed);
+                parsed = this.parseUnderline(parsed);
+                parsed = this.parseStrikethrough(parsed);
+                parsed = this.parseInlineCode(parsed);
+                parsed = this.parseColorTags(parsed);
+                parsed = this.parseLinks(parsed);
+                parsed = this.parseImages(parsed);
+                
+                return parsed;
+            }
+
+            processBlockLine(line) {
+                if (line.trim()) {
+                    return `<p>${this.parseInlineElements(line)}</p>`;
+                }
+                return '';
+            }
+
+            parseHeading(line) {
+                const match = line.match(this.regexCache.heading);
+                if (match) {
+                    const level = match[1].length;
+                    const text = match[2];
+                    return `<h${level}>${this.parseInlineElements(text)}</h${level}>`;
+                }
+                return line;
+            }
+
+            parseBlockquote(line) {
+                const match = line.match(this.regexCache.blockquote);
+                if (match) {
+                    const content = match[2];
+                    return `<blockquote>${this.parseInlineElements(content)}</blockquote>`;
+                }
+                return line;
+            }
+
+            parseUnorderedListItem(line) {
+                const match = line.match(this.regexCache.unorderedList);
+                if (match) {
+                    const content = match[2];
+                    return `<ul><li>${this.parseInlineElements(content)}</li></ul>`;
+                }
+                return line;
+            }
+
+            parseOrderedListItem(line) {
+                const match = line.match(this.regexCache.orderedList);
+                if (match) {
+                    const content = match[2];
+                    return `<ol><li>${this.parseInlineElements(content)}</li></ol>`;
+                }
+                return line;
+            }
+
+            parseBold(text) {
+                return text.replace(this.regexCache.bold, '<strong>$1</strong>');
+            }
+
+            parseItalic(text) {
+                return text.replace(this.regexCache.italic, '<em>$1</em>');
+            }
+
+            parseBoldItalic(text) {
+                return text.replace(this.regexCache.boldItalic, '<strong><em>$1</em></strong>');
+            }
+
+            parseUnderline(text) {
+                return text.replace(this.regexCache.underline, '<u>$1</u>');
+            }
+
+            parseStrikethrough(text) {
+                return text.replace(this.regexCache.strikethrough, '<del>$1</del>');
+            }
+
+            parseInlineCode(text) {
+                return text.replace(this.regexCache.inlineCode, '<code>$1</code>');
+            }
+
+            parseColorTags(text) {
+                return text.replace(this.regexCache.colorTag, (match, color, content) => {
+                    const normalizedColor = color.toLowerCase();
+                    let cssColor = normalizedColor;
+                    
+                    if (/^#[0-9a-f]{6}$/i.test(normalizedColor)) {
+                        cssColor = normalizedColor;
+                    } else {
+                        const colorMap = {
+                            red: '#FF0000', green: '#00FF00', blue: '#0000FF',
+                            yellow: '#FFFF00', purple: '#800080', cyan: '#00FFFF',
+                            magenta: '#FF00FF', orange: '#FFA500', pink: '#FFC0CB',
+                            brown: '#A52A2A', black: '#000000', white: '#FFFFFF',
+                            gray: '#808080', grey: '#808080'
+                        };
+                        cssColor = colorMap[normalizedColor] || '#000000';
+                    }
+                    
+                    return `<span style="color: ${cssColor}">${this.parseInlineElements(content)}</span>`;
+                });
+            }
+
+            parseLinks(text) {
+                return text.replace(this.regexCache.link, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+            }
+
+            parseImages(text) {
+                return text.replace(this.regexCache.image, '');
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // 应用状态管理
         const state = {
             theme: localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'),
             fontSize: localStorage.getItem('fontSize') || '16',
@@ -205,7 +434,7 @@
             hideTimeout: null
         };
 
-        // ---------------------- DOM元素缓存 ----------------------
+        // DOM元素缓存
         const el = {
             body: document.body,
             header: document.querySelector('.header'),
@@ -216,7 +445,7 @@
             fontSizeSlider: document.getElementById('fontSizeSlider')
         };
 
-        // ---------------------- 初始化应用 ----------------------
+        // 初始化应用
         function init() {
             applyTheme(state.theme);
             applyFontSize(state.fontSize);
@@ -224,56 +453,56 @@
             bindEvents();
         }
 
-        // ---------------------- 主题控制 ----------------------
+        // 主题控制
         function applyTheme(theme) {
             el.body.setAttribute('data-theme', theme);
             el.themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
         }
 
-        // ---------------------- 字体控制 ----------------------
+        // 字体控制
         function applyFontSize(size) {
             document.documentElement.style.setProperty('--font-size', `${size}px`);
             el.fontSizeSlider.value = size;
         }
 
-        // ---------------------- 加载Markdown内容 ----------------------
+        // 加载Markdown内容
         async function loadMarkdown() {
             try {
-                const res = await fetch('./mtp/txt/test.txt');
+                const res = await fetch('./mtp/txt/gg1.txt');
                 if (!res.ok) throw new Error(`加载失败：${res.status}`);
                 const mdText = await res.text();
-                // 修复2：正确调用解析函数（原代码缺少括号）
-                el.content.innerHTML = parseMarkdown(mdText);
+                const parser = new CustomMarkdownParser();
+                el.content.innerHTML = parser.parse(mdText);
             } catch (err) {
                 console.error('加载Markdown失败:', err);
                 el.content.innerHTML = `<p style="color: red;">内容加载失败：${err.message}</p>`;
             }
         }
 
-        // ---------------------- 事件绑定 ----------------------
+        // 事件绑定
         function bindEvents() {
-            // 1. 主题切换
+            // 主题切换
             el.themeToggle.addEventListener('click', () => {
                 state.theme = state.theme === 'dark' ? 'light' : 'dark';
                 localStorage.setItem('theme', state.theme);
                 applyTheme(state.theme);
             });
 
-            // 2. 字体大小调整
+            // 字体大小调整
             el.fontSizeSlider.addEventListener('input', (e) => {
                 state.fontSize = e.target.value;
                 localStorage.setItem('fontSize', state.fontSize);
                 applyFontSize(state.fontSize);
             });
 
-            // 3. 滚动事件（进度条+控制栏隐藏）
+            // 滚动事件
             window.addEventListener('scroll', handleScroll);
 
-            // 4. 点击屏幕显示控制栏
+            // 点击屏幕显示控制栏
             el.body.addEventListener('click', handleBodyClick);
         }
 
-        // ---------------------- 处理滚动 ----------------------
+        // 处理滚动
         function handleScroll() {
             const scrollTop = window.pageYOffset;
             const scrollHeight = document.documentElement.scrollHeight;
@@ -283,7 +512,7 @@
             const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
             el.progressBar.style.width = `${Math.min(progress, 100)}%`;
 
-            // 控制顶栏/底栏隐藏（滑动超过10px隐藏）
+            // 控制顶栏/底栏隐藏
             if (scrollTop > 10) {
                 el.header.classList.add('hidden');
                 el.footer.classList.add('hidden');
@@ -294,16 +523,13 @@
             }
         }
 
-        // ---------------------- 处理点击屏幕 ----------------------
+        // 处理点击屏幕
         function handleBodyClick() {
-            // 显示控制栏
             el.header.classList.remove('hidden');
             el.footer.classList.remove('hidden');
 
-            // 清除之前的定时器
             if (state.hideTimeout) clearTimeout(state.hideTimeout);
 
-            // 2秒后自动隐藏（无操作时）
             state.hideTimeout = setTimeout(() => {
                 if (!state.isScrolling) {
                     el.header.classList.add('hidden');
