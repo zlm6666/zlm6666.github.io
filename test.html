@@ -468,7 +468,7 @@
         // 加载Markdown内容
         async function loadMarkdown() {
             try {
-                const res = await fetch('./mtp/txt/gg1.txt');
+                const res = await fetch('./mtp/txt/test.txt');
                 if (!res.ok) throw new Error(`加载失败：${res.status}`);
                 const mdText = await res.text();
                 const parser = new CustomMarkdownParser();
