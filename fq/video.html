@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="no-referrer">
+    <title>视频播放</title>
+    <!-- 使用CDN引入Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-color: #8b5cf6;
+            --background-dark: #0f0f23;
+            --surface-dark: #1a1a2e;
+            --surface-light: #16213e;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a9c0;
+            --accent-color: #f59e0b;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.2);
+            --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.3);
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+            --border-radius-lg: 16px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--background-dark);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .player-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .video-container.transitioning {
+            pointer-events: none;
+        }
+
+        .video-container.fade-out {
+            opacity: 0.3;
+            transform: scale(0.98);
+        }
+
+        .video-container.fade-in {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        #videoPlayer {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+
+        .loading-indicator {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .loading-indicator.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 64px;
+            height: 64px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .center-play-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.6);
+            border: none;
+            border-radius: 50%;
+            color: var(--text-primary);
+            font-size: 32px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            transition: var(--transition);
+            z-index: 15;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .center-play-btn.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .center-play-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: translate(-50%, -50%) scale(1.1);
+            border-color: var(--primary-color);
+        }
+
+        .center-play-btn:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        .long-press-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--text-primary);
+            padding: 16px 24px;
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            z-index: 15;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            font-size: 14px;
+            text-align: center;
+            max-width: 280px;
+        }
+
+        .long-press-hint.show {
+            opacity: 1;
+        }
+
+        .speed-lock-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--primary-gradient);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            z-index: 25;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: var(--transition);
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .speed-lock-indicator.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .speed-lock-indicator i {
+            font-size: 12px;
+        }
+
+        .episode-transition-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            z-index: 30;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .episode-transition-overlay.show {
+            opacity: 1;
+        }
+
+        .transition-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--primary-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .transition-icon i {
+            font-size: 32px;
+            color: var(--text-primary);
+        }
+
+        .transition-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .transition-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(103, 114, 234, 0.4);
+            }
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 10px rgba(103, 114, 234, 0);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(103, 114, 234, 0);
+            }
+        }
+
+        .swipe-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            z-index: 15;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .swipe-indicator.show {
+            opacity: 1;
+        }
+
+        .swipe-indicator i {
+            font-size: 16px;
+        }
+
+        .custom-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 24px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: var(--transition);
+            z-index: 20;
+        }
+
+        .custom-controls.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .progress-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .video-progress {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            cursor: pointer;
+            overflow: hidden;
+            transition: height 0.2s ease;
+            position: relative;
+        }
+
+        .video-progress:hover {
+            height: 8px;
+        }
+
+        .video-progress-buffered {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+
+        .video-progress-filled {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: var(--primary-gradient);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s ease;
+        }
+
+        .controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .controls-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .controls-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+        }
+
+        .control-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+            box-shadow: var(--shadow-md);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-btn i {
+            font-size: 16px;
+        }
+
+        .playback-rate-btn {
+            border-radius: var(--border-radius-sm);
+            width: auto;
+            min-width: 48px;
+            padding: 0 12px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .playback-rate-btn.locked {
+            background: var(--primary-gradient);
+            box-shadow: var(--shadow-md);
+        }
+
+        .time-display {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            background: var(--glass-bg);
+            padding: 8px 12px;
+            border-radius: var(--border-radius-sm);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+        }
+
+        .episode-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--glass-bg);
+            padding: 8px 12px;
+            border-radius: var(--border-radius-sm);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-header {
+            padding: 24px;
+            background: var(--surface-dark);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 8px;
+            border-radius: 50%;
+        }
+
+        .close-btn:hover {
+            color: var(--text-primary);
+            background: var(--glass-bg);
+        }
+
+        .episode-list-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 24px;
+            background: var(--surface-light);
+        }
+
+        .episode-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .episode-item {
+            padding: 16px 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .episode-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .episode-item.active {
+            background: var(--primary-gradient);
+            color: var(--text-primary);
+            font-weight: 600;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .episode-item.active::before {
+            content: '\f00c';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: var(--text-primary);
+        }
+
+        .episode-list-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .episode-list-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .episode-list-container::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        .episode-list-container::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary-color);
+        }
+
+        .alert-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 20px;
+        }
+
+        .alert-modal.show {
+            display: flex;
+        }
+
+        .alert-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        .alert-content {
+            background: var(--surface-dark);
+            border-radius: var(--border-radius-lg);
+            padding: 32px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid var(--glass-border);
+            position: relative;
+            z-index: 1;
+            transform: scale(0.9);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .alert-content.show {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        .alert-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--primary-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .alert-icon i {
+            font-size: 24px;
+            color: var(--text-primary);
+        }
+
+        .alert-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .alert-message {
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .alert-button {
+            background: var(--primary-gradient);
+            color: var(--text-primary);
+            border: none;
+            padding: 12px 24px;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            width: 100%;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .alert-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .small-window {
+            position: fixed;
+            width: 320px;
+            height: 180px;
+            bottom: 20px;
+            right: 20px;
+            z-index: 150;
+            box-shadow: var(--shadow-xl);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            background: #000;
+            border: 2px solid var(--primary-color);
+            display: none;
+        }
+
+        .small-window.show {
+            display: block;
+        }
+
+        #smallWindowPlayer {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .small-window-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+        }
+
+        .small-window-close:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: scale(1.1);
+        }
+
+        @media (max-width: 768px) {
+            .custom-controls {
+                padding: 16px;
+            }
+
+            .controls-row {
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            .controls-right {
+                gap: 8px;
+            }
+
+            .control-btn {
+                width: 42px;
+                height: 42px;
+            }
+
+            .control-btn i {
+                font-size: 14px;
+            }
+
+            .time-display,
+            .episode-info {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+
+            .modal-header {
+                padding: 20px 16px;
+            }
+
+            .episode-list-container {
+                padding: 12px 16px;
+            }
+
+            .episode-item {
+                padding: 14px 16px;
+            }
+
+            .small-window {
+                width: 280px;
+                height: 157px;
+                bottom: 16px;
+                right: 16px;
+            }
+
+            .long-press-hint {
+                max-width: 240px;
+                font-size: 12px;
+                padding: 12px 20px;
+            }
+
+            .speed-lock-indicator {
+                top: 16px;
+                right: 16px;
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+
+            .center-play-btn {
+                width: 70px;
+                height: 70px;
+                font-size: 28px;
+            }
+
+            .transition-icon {
+                width: 70px;
+                height: 70px;
+            }
+
+            .transition-icon i {
+                font-size: 28px;
+            }
+
+            .transition-text {
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .controls-right .control-btn:nth-child(1),
+            .controls-right .control-btn:nth-child(2) {
+                display: none;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+            40%, 43% {
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        .slide-up {
+            animation: slideUp 0.3s ease;
+        }
+
+        .bounce {
+            animation: bounce 0.6s ease;
+        }
+
+        .video-wrapper.fullscreen .custom-controls {
+            opacity: 0;
+        }
+
+        .video-wrapper.fullscreen .custom-controls.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <div class="video-wrapper" id="videoWrapper">
+            <div class="video-container" id="videoContainer">
+                <video id="videoPlayer" playsinline webkit-playsinline></video>
+            </div>
+            
+            <div id="loadingIndicator" class="loading-indicator">
+                <div class="spinner"></div>
+            </div>
+
+            <button id="centerPlayBtn" class="center-play-btn">
+                <i class="fas fa-play"></i>
+            </button>
+
+            <div id="longPressHint" class="long-press-hint">
+                长按屏幕开启倍速播放<br>
+                倍速状态下向下滑动可锁定倍速
+            </div>
+
+            <div id="episodeTransitionOverlay" class="episode-transition-overlay">
+                <div class="transition-icon">
+                    <i class="fas fa-forward" id="transitionIcon"></i>
+                </div>
+                <div class="transition-text" id="transitionText">切换到下一集</div>
+                <div class="transition-subtitle" id="transitionSubtitle">正在加载...</div>
+            </div>
+
+            <div id="swipeIndicator" class="swipe-indicator">
+                <i class="fas fa-arrow-up"></i>
+                <span>下一集</span>
+            </div>
+
+            <div id="speedLockIndicator" class="speed-lock-indicator">
+                <i class="fas fa-lock"></i>
+                <span>倍速已锁定</span>
+            </div>
+            
+            <div id="customControls" class="custom-controls">
+                <div class="progress-container">
+                    <div class="video-progress" id="progressBar">
+                        <div class="video-progress-buffered" id="progressBuffered"></div>
+                        <div class="video-progress-filled" id="progressFilled"></div>
+                    </div>
+                </div>
+                
+                <div class="controls-row">
+                    <div class="controls-left">
+                        <button id="playPauseBtn" class="control-btn">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        <div class="time-display" id="timeDisplay">00:00 / 00:00</div>
+                        <div class="episode-info" id="episodeListBtn2">
+                            <span id="currentEpisode">1</span>
+                            <span>/</span>
+                            <span id="totalEpisodes">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="controls-right">
+                        <button id="prevEpisodeBtn" class="control-btn">
+                            <i class="fas fa-step-backward"></i>
+                        </button>
+                        <button id="nextEpisodeBtn" class="control-btn">
+                            <i class="fas fa-step-forward"></i>
+                        </button>
+                        <button id="playbackRateBtn" class="control-btn playback-rate-btn">1x</button>
+                        <button id="episodeListBtn" class="control-btn">
+                            <i class="fas fa-list"></i>
+                        </button>
+                        <button id="fullscreenBtn" class="control-btn">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        <button id="smallWindowBtn" class="control-btn">
+                            <i class="fas fa-window-minimize"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="episodeListModal" class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">剧集列表</h3>
+                <button id="closeEpisodeListBtn" class="close-btn">&times;</button>
+            </div>
+            <div class="episode-list-container">
+                <div id="episodeList" class="episode-list"></div>
+            </div>
+        </div>
+
+        <div id="customAlertModal" class="alert-modal">
+            <div class="alert-overlay" id="customAlertOverlay"></div>
+            <div class="alert-content" id="customAlertContent">
+                <div class="alert-icon">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <h3 class="alert-title" id="customAlertTitle">提示</h3>
+                <p class="alert-message" id="customAlertMessage"></p>
+                <button id="closeCustomAlertBtn" class="alert-button">确定</button>
+            </div>
+        </div>
+        
+        <div id="smallWindowContainer" class="small-window">
+            <video id="smallWindowPlayer" playsinline webkit-playsinline></video>
+            <button id="closeSmallWindowBtn" class="small-window-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // 从URL获取book_id参数
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookId = urlParams.get('book_id');
+            
+            if (!bookId) {
+                showCustomAlert('缺少book_id参数');
+                return;
+            }
+            
+            let currentItemId = urlParams.get('item_id');
+            const tab = '短剧';
+            
+            // 尝试从本地存储恢复上次播放的集数
+            const recentItemId = localStorage.getItem(`recent_play_item_id_${bookId}`);
+            if (recentItemId && !currentItemId) {
+                currentItemId = recentItemId;
+            }
+            
+            // 状态变量
+            let episodeList = [];
+            let currentEpisodeIndex = 0;
+            let isLongPress = false;
+            let longPressTimer;
+            let longPressStartTime = 0;
+            let isPlaying = false;
+            let lastProgress = 0;
+            let nextEpisodeUrl = '';
+            let prevEpisodeUrl = '';
+            let isLoadingNextEpisode = false;
+            let isLoadingPrevEpisode = false;
+            let isFullscreen = false;
+            let isSmallWindow = false;
+            let controlsTimeout;
+            let controlsVisible = true;
+            let isSpeedLocked = false;
+            let hasShownLongPressHint = localStorage.getItem('hasShownLongPressHint') === 'true';
+            let longPressStartY = 0;
+            let longPressStartX = 0;
+            let isLongPressMoving = false;
+            let defaultPlaybackRate = 1;
+            let isTransitioning = false;
+            let touchStartY = 0;
+            let touchStartX = 0;
+            let lastTouchY = 0;
+
+            // DOM元素
+            const videoPlayer = document.getElementById('videoPlayer');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const centerPlayBtn = document.getElementById('centerPlayBtn');
+            const progressBar = document.getElementById('progressBar');
+            const progressFilled = document.getElementById('progressFilled');
+            const progressBuffered = document.getElementById('progressBuffered');
+            const timeDisplay = document.getElementById('timeDisplay');
+            const currentEpisodeEl = document.getElementById('currentEpisode');
+            const totalEpisodesEl = document.getElementById('totalEpisodes');
+            const playbackRateBtn = document.getElementById('playbackRateBtn');
+            const episodeListBtn = document.getElementById('episodeListBtn');
+            const episodeListBtn2 = document.getElementById('episodeListBtn2');
+            const closeEpisodeListBtn = document.getElementById('closeEpisodeListBtn');
+            const episodeListModal = document.getElementById('episodeListModal');
+            const episodeListEl = document.getElementById('episodeList');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const customControls = document.getElementById('customControls');
+            const customAlertModal = document.getElementById('customAlertModal');
+            const customAlertContent = document.getElementById('customAlertContent');
+            const customAlertOverlay = document.getElementById('customAlertOverlay');
+            const closeCustomAlertBtn = document.getElementById('closeCustomAlertBtn');
+            const customAlertTitle = document.getElementById('customAlertTitle');
+            const customAlertMessage = document.getElementById('customAlertMessage');
+            const nextEpisodeBtn = document.getElementById('nextEpisodeBtn');
+            const prevEpisodeBtn = document.getElementById('prevEpisodeBtn');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const smallWindowBtn = document.getElementById('smallWindowBtn');
+            const videoWrapper = document.getElementById('videoWrapper');
+            const videoContainer = document.getElementById('videoContainer');
+            const smallWindowContainer = document.getElementById('smallWindowContainer');
+            const smallWindowPlayer = document.getElementById('smallWindowPlayer');
+            const closeSmallWindowBtn = document.getElementById('closeSmallWindowBtn');
+            const longPressHint = document.getElementById('longPressHint');
+            const swipeIndicator = document.getElementById('swipeIndicator');
+            const speedLockIndicator = document.getElementById('speedLockIndicator');
+            const episodeTransitionOverlay = document.getElementById('episodeTransitionOverlay');
+            const transitionIcon = document.getElementById('transitionIcon');
+            const transitionText = document.getElementById('transitionText');
+            const transitionSubtitle = document.getElementById('transitionSubtitle');
+
+            // 初始化
+            init();
+
+            async function init() {
+                showLoading();
+                try {
+                    const catalogData = await fetchCatalog();
+                    episodeList = catalogData;
+                    totalEpisodesEl.textContent = `${episodeList.length}集`;
+
+                    if (currentItemId) {
+                        currentEpisodeIndex = episodeList.findIndex(episode => episode.itemId === currentItemId);
+                    }
+                    
+                    if (currentEpisodeIndex === -1 && episodeList.length > 0) {
+                        currentEpisodeIndex = 0;
+                        currentItemId = episodeList[0].itemId;
+                        localStorage.setItem(`recent_play_item_id_${bookId}`, currentItemId);
+                    }
+
+                    updateCurrentEpisodeInfo();
+                    restorePlaybackProgress();
+                    await loadCurrentEpisode();
+                    preloadAdjacentEpisodes();
+                    renderEpisodeList();
+                    updateCenterPlayButton();
+                } catch (error) {
+                    console.error('初始化错误:', error);
+                    showCustomAlert('初始化失败: ' + error.message);
+                } finally {
+                    hideLoading();
+                }
+                setupEventListeners();
+            }
+
+            async function fetchCatalog() {
+                const url = `https://fq.shusan.cn/api/book?book_id=${bookId}`;
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('获取剧集列表失败');
+                }
+                const data = await response.json();
+                
+                // 适配新的API返回格式
+                if (data.code === 200 && data.data && data.data.data && data.data.data.chapterListWithVolume) {
+                    // 扁平化章节列表
+                    return data.data.data.chapterListWithVolume.flat();
+                }
+                throw new Error('剧集数据格式错误');
+            }
+
+            async function fetchContent(itemId) {
+                const url = `https://fq.shusan.cn/api/content?item_id=${itemId}&tab=${tab}`;
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('获取视频内容失败');
+                }
+                const data = await response.json();
+                
+                // 适配新的API返回格式
+                if (data.code === 200 && data.data && data.data.video_url) {
+                    return data.data.video_url;
+                }
+                throw new Error('视频地址获取失败');
+            }
+
+            async function loadCurrentEpisode() {
+                showLoading();
+                try {
+                    const currentEpisode = episodeList[currentEpisodeIndex];
+                    const videoUrl = await fetchContent(currentEpisode.itemId);
+                    
+                    if (!videoUrl || !videoUrl.includes("http")) {
+                        showCustomAlert("加载剧集失败");
+                        return;
+                    }
+                    
+                    videoPlayer.src = videoUrl;
+                    smallWindowPlayer.src = videoUrl;
+                    
+                    const restoreProgressHandler = () => {
+                        if (lastProgress > 0 && videoPlayer.duration) {
+                            const targetTime = lastProgress * videoPlayer.duration;
+                            console.log('恢复播放进度:', {
+                                progress: lastProgress,
+                                duration: videoPlayer.duration,
+                                targetTime: targetTime
+                            });
+                            videoPlayer.currentTime = targetTime;
+                            smallWindowPlayer.currentTime = targetTime;
+                        }
+                        
+                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                        if (isIOS) {
+                            showCustomAlert('视频已准备好，请点击播放按钮开始观看');
+                        }
+                    };
+                    
+                    videoPlayer.addEventListener('loadedmetadata', restoreProgressHandler, { once: true });
+                    
+                    await videoPlayer.load();
+                    await smallWindowPlayer.load();
+                    
+                    isPlaying = false;
+                    updatePlayPauseIcon();
+                    updateCenterPlayButton();
+                    
+                } catch (error) {
+                    console.error('加载剧集失败:', error);
+                    showCustomAlert('加载视频失败: ' + error.message);
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            async function preloadAdjacentEpisodes() {
+                if (!isLoadingNextEpisode) {
+                    preloadNextEpisode();
+                }
+                if (!isLoadingPrevEpisode) {
+                    preloadPrevEpisode();
+                }
+            }
+
+            async function preloadNextEpisode() {
+                if (isLoadingNextEpisode) return;
+                isLoadingNextEpisode = true;
+
+                const nextIndex = currentEpisodeIndex + 1;
+                if (nextIndex < episodeList.length) {
+                    try {
+                        const nextEpisode = episodeList[nextIndex];
+                        nextEpisodeUrl = await fetchContent(nextEpisode.itemId);
+                        console.log('下一集预加载完成');
+                    } catch (error) {
+                        console.error('预加载下一集失败:', error);
+                    }
+                }
+                isLoadingNextEpisode = false;
+            }
+
+            async function preloadPrevEpisode() {
+                if (isLoadingPrevEpisode) return;
+                isLoadingPrevEpisode = true;
+
+                const prevIndex = currentEpisodeIndex - 1;
+                if (prevIndex >= 0) {
+                    try {
+                        const prevEpisode = episodeList[prevIndex];
+                        prevEpisodeUrl = await fetchContent(prevEpisode.itemId);
+                        console.log('上一集预加载完成');
+                    } catch (error) {
+                        console.error('预加载上一集失败:', error);
+                    }
+                }
+                isLoadingPrevEpisode = false;
+            }
+
+            function updateCurrentEpisodeInfo() {
+                const currentEpisode = episodeList[currentEpisodeIndex];
+                currentEpisodeEl.textContent = currentEpisode.title;
+                currentItemId = currentEpisode.itemId;
+                localStorage.setItem(`recent_play_item_id_${bookId}`, currentEpisode.itemId);
+                const newUrl = `${window.location.pathname}?book_id=${bookId}&item_id=${currentEpisode.itemId}`;
+                window.history.replaceState({path: newUrl}, '', newUrl);
+            }
+
+            function renderEpisodeList() {
+                episodeListEl.innerHTML = '';
+                episodeList.forEach((episode, index) => {
+                    const div = document.createElement('div');
+                    div.className = `episode-item ${index === currentEpisodeIndex ? 'active' : ''}`;
+                    div.textContent = episode.title;
+                    div.addEventListener('click', () => {
+                        savePlaybackProgress();
+                        currentEpisodeIndex = index;
+                        updateCurrentEpisodeInfo();
+                        lastProgress = 0;
+                        restorePlaybackProgress();
+                        loadCurrentEpisode();
+                        renderEpisodeList();
+                        hideEpisodeList();
+                        nextEpisodeUrl = '';
+                        prevEpisodeUrl = '';
+                        preloadAdjacentEpisodes();
+                    });
+                    episodeListEl.appendChild(div);
+                });
+                
+                if (episodeListModal.classList.contains('show')) {
+                    setTimeout(() => {
+                        scrollToActiveEpisode();
+                    }, 100);
+                }
+            }
+
+            function savePlaybackProgress() {
+                if (videoPlayer.duration) {
+                    const progress = videoPlayer.currentTime / videoPlayer.duration;
+                    console.log('保存进度:', {
+                        itemId: currentItemId,
+                        progress: progress,
+                        currentTime: videoPlayer.currentTime,
+                        duration: videoPlayer.duration
+                    });
+                    localStorage.setItem(`playback_progress_${currentItemId}`, progress);
+                }
+            }
+
+            function restorePlaybackProgress() {
+                const savedProgress = localStorage.getItem(`playback_progress_${currentItemId}`);
+                if (savedProgress) {
+                    lastProgress = parseFloat(savedProgress);
+                    console.log('读取保存的进度:', {
+                        itemId: currentItemId,
+                        progress: lastProgress
+                    });
+                }
+            }
+
+            function showLoading() {
+                loadingIndicator.classList.add('show');
+            }
+
+            function hideLoading() {
+                loadingIndicator.classList.remove('show');
+            }
+
+            function updatePlayPauseIcon() {
+                const icon = playPauseBtn.querySelector('i');
+                const centerIcon = centerPlayBtn.querySelector('i');
+                
+                if (isPlaying) {
+                    icon.classList.remove('fa-play');
+                    icon.classList.add('fa-pause');
+                    centerIcon.classList.remove('fa-play');
+                    centerIcon.classList.add('fa-pause');
+                } else {
+                    icon.classList.remove('fa-pause');
+                    icon.classList.add('fa-play');
+                    centerIcon.classList.remove('fa-pause');
+                    centerIcon.classList.add('fa-play');
+                }
+            }
+
+            function updateCenterPlayButton() {
+                if (!isPlaying && !controlsVisible) {
+                    centerPlayBtn.classList.add('show');
+                } else {
+                    centerPlayBtn.classList.remove('show');
+                }
+            }
+
+            function togglePlayPause() {
+                isPlaying = !isPlaying;
+                if (isPlaying) {
+                    videoPlayer.play();
+                    if (isSmallWindow) {
+                        smallWindowPlayer.play();
+                    }
+                } else {
+                    videoPlayer.pause();
+                    smallWindowPlayer.pause();
+                }
+                updatePlayPauseIcon();
+                updateCenterPlayButton();
+            }
+
+            function togglePlaybackRate() {
+                const rates = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
+                const currentRate = videoPlayer.playbackRate;
+                const currentIndex = rates.indexOf(currentRate);
+                const nextIndex = (currentIndex + 1) % rates.length;
+                const newRate = rates[nextIndex];
+                
+                videoPlayer.playbackRate = newRate;
+                smallWindowPlayer.playbackRate = newRate;
+                playbackRateBtn.textContent = `${newRate}x`;
+                
+                if (!isLongPress && !isSpeedLocked) {
+                    defaultPlaybackRate = newRate;
+                }
+            }
+
+            function showSwipeIndicator(direction) {
+                const icon = swipeIndicator.querySelector('i');
+                const text = swipeIndicator.querySelector('span');
+                
+                if (direction === 'up') {
+                    icon.className = 'fas fa-arrow-up';
+                    text.textContent = '下一集';
+                } else {
+                    icon.className = 'fas fa-arrow-down';
+                    text.textContent = '上一集';
+                }
+                
+                swipeIndicator.classList.add('show');
+                setTimeout(() => {
+                    swipeIndicator.classList.remove('show');
+                }, 1500);
+            }
+
+            function showEpisodeTransition(direction, episodeTitle) {
+                if (direction === 'next') {
+                    transitionIcon.className = 'fas fa-forward';
+                    transitionText.textContent = '切换到下一集';
+                } else {
+                    transitionIcon.className = 'fas fa-backward';
+                    transitionText.textContent = '切换到上一集';
+                }
+                
+                transitionSubtitle.textContent = episodeTitle || '正在加载...';
+            }
+
+            function hideEpisodeTransition() {
+            }
+
+            async function prevEpisode() {
+                if (isTransitioning) return;
+                
+                if (currentEpisodeIndex > 0) {
+                    isTransitioning = true;
+                    savePlaybackProgress();
+                    const currentRate = videoPlayer.playbackRate;
+                    
+                    const prevEpisode = episodeList[currentEpisodeIndex - 1];
+                    showEpisodeTransition('prev', prevEpisode.title);
+                    videoContainer.classList.add('transitioning', 'fade-out');
+                    
+                    setTimeout(async () => {
+                        currentEpisodeIndex--;
+                        updateCurrentEpisodeInfo();
+                        lastProgress = 0;
+                        restorePlaybackProgress();
+                        
+                        try {
+                            if (prevEpisodeUrl) {
+                                videoPlayer.src = prevEpisodeUrl;
+                                smallWindowPlayer.src = prevEpisodeUrl;
+                                
+                                videoPlayer.addEventListener('loadedmetadata', () => {
+                                    if (lastProgress > 0 && videoPlayer.duration) {
+                                        videoPlayer.currentTime = lastProgress * videoPlayer.duration;
+                                        smallWindowPlayer.currentTime = lastProgress * smallWindowPlayer.duration;
+                                    }
+                                }, { once: true });
+                                
+                                await videoPlayer.load();
+                                await smallWindowPlayer.load();
+                                prevEpisodeUrl = '';
+                            } else {
+                                await loadCurrentEpisode();
+                            }
+
+                            videoPlayer.playbackRate = currentRate;
+                            smallWindowPlayer.playbackRate = currentRate;
+                            playbackRateBtn.textContent = `${currentRate}x`;
+                            
+                            videoContainer.classList.remove('fade-out');
+                            videoContainer.classList.add('fade-in');
+                            
+                            isPlaying = true;
+                            videoPlayer.play();
+                            if (isSmallWindow) {
+                                smallWindowPlayer.play();
+                            }
+                            updatePlayPauseIcon();
+                            
+                            setTimeout(() => {
+                                hideEpisodeTransition();
+                                videoContainer.classList.remove('transitioning', 'fade-in');
+                                isTransitioning = false;
+                            }, 200);
+
+                            renderEpisodeList();
+                            preloadAdjacentEpisodes();
+                        } catch (error) {
+                            console.error('切换剧集失败:', error);
+                            hideEpisodeTransition();
+                            videoContainer.classList.remove('transitioning', 'fade-out');
+                            isTransitioning = false;
+                            showCustomAlert('切换剧集失败: ' + error.message);
+                        }
+                    }, 150);
+                } else {
+                    showCustomAlert('已经是第一集');
+                }
+            }
+
+            async function nextEpisode() {
+                if (isTransitioning) return;
+                
+                if (currentEpisodeIndex < episodeList.length - 1) {
+                    isTransitioning = true;
+                    savePlaybackProgress();
+                    const currentRate = videoPlayer.playbackRate;
+                    
+                    const nextEpisode = episodeList[currentEpisodeIndex + 1];
+                    showEpisodeTransition('next', nextEpisode.title);
+                    videoContainer.classList.add('transitioning', 'fade-out');
+                    
+                    setTimeout(async () => {
+                        currentEpisodeIndex++;
+                        updateCurrentEpisodeInfo();
+                        lastProgress = 0;
+                        restorePlaybackProgress();
+                        
+                        try {
+                            if (nextEpisodeUrl) {
+                                videoPlayer.src = nextEpisodeUrl;
+                                smallWindowPlayer.src = nextEpisodeUrl;
+                                
+                                videoPlayer.addEventListener('loadedmetadata', () => {
+                                    if (lastProgress > 0 && videoPlayer.duration) {
+                                        videoPlayer.currentTime = lastProgress * videoPlayer.duration;
+                                        smallWindowPlayer.currentTime = lastProgress * smallWindowPlayer.duration;
+                                    }
+                                }, { once: true });
+                                
+                                await videoPlayer.load();
+                                await smallWindowPlayer.load();
+                                nextEpisodeUrl = '';
+                            } else {
+                                await loadCurrentEpisode();
+                            }
+
+                            videoPlayer.playbackRate = currentRate;
+                            smallWindowPlayer.playbackRate = currentRate;
+                            playbackRateBtn.textContent = `${currentRate}x`;
+                            
+                            videoContainer.classList.remove('fade-out');
+                            videoContainer.classList.add('fade-in');
+                            
+                            isPlaying = true;
+                            videoPlayer.play();
+                            if (isSmallWindow) {
+                                smallWindowPlayer.play();
+                            }
+                            updatePlayPauseIcon();
+                            
+                            setTimeout(() => {
+                                hideEpisodeTransition();
+                                videoContainer.classList.remove('transitioning', 'fade-in');
+                                isTransitioning = false;
+                            }, 200);
+
+                            renderEpisodeList();
+                            preloadAdjacentEpisodes();
+                        } catch (error) {
+                            console.error('切换剧集失败:', error);
+                            hideEpisodeTransition();
+                            videoContainer.classList.remove('transitioning', 'fade-out');
+                            isTransitioning = false;
+                            showCustomAlert('切换剧集失败: ' + error.message);
+                        }
+                    }, 150);
+                } else {
+                    showCustomAlert('已经是最后一集');
+                }
+            }
+
+            function showCustomAlert(message, title = '提示') {
+                customAlertTitle.textContent = title;
+                customAlertMessage.textContent = message;
+                customAlertModal.classList.add('show');
+                setTimeout(() => {
+                    customAlertContent.classList.add('show');
+                }, 10);
+            }
+
+            function hideCustomAlert() {
+                customAlertContent.classList.remove('show');
+                setTimeout(() => {
+                    customAlertModal.classList.remove('show');
+                }, 300);
+            }
+
+            function showEpisodeList() {
+                episodeListModal.classList.add('show');
+                setTimeout(() => {
+                    scrollToActiveEpisode();
+                }, 100);
+            }
+            
+            function scrollToActiveEpisode() {
+                const activeItem = episodeListEl.querySelector('.episode-item.active');
+                if (activeItem) {
+                    const container = episodeListEl.parentElement;
+                    const containerHeight = container.clientHeight;
+                    const itemTop = activeItem.offsetTop;
+                    const itemHeight = activeItem.offsetHeight;
+                    
+                    const scrollPosition = itemTop - (containerHeight / 2) + (itemHeight / 2);
+                    
+                    container.scrollTo({
+                        top: scrollPosition,
+                        behavior: 'smooth'
+                    });
+                    
+                    activeItem.style.transition = 'transform 0.3s ease';
+                    activeItem.style.transform = 'scale(1.05)';
+                    setTimeout(() => {
+                        activeItem.style.transform = 'scale(1)';
+                    }, 300);
+                }
+            }
+
+            function hideEpisodeList() {
+                episodeListModal.classList.remove('show');
+            }
+
+            function toggleFullscreen() {
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                
+                if (!isFullscreen) {
+                    if (isIOS) {
+                        if (videoPlayer.webkitEnterFullscreen) {
+                            videoPlayer.webkitEnterFullscreen();
+                        } else {
+                            showCustomAlert('iOS设备全屏功能受限，请尝试横屏模式');
+                        }
+                    } else if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen();
+                    } else if (document.documentElement.webkitRequestFullscreen) {
+                        document.documentElement.webkitRequestFullscreen();
+                    } else if (document.documentElement.msRequestFullscreen) {
+                        document.documentElement.msRequestFullscreen();
+                    }
+                    isFullscreen = true;
+                    fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+                    videoWrapper.classList.add('fullscreen');
+                } else {
+                    if (isIOS) {
+                        showCustomAlert('请点击视频右上角的全屏按钮退出全屏');
+                    } else if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                    isFullscreen = false;
+                    fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+                    videoWrapper.classList.remove('fullscreen');
+                }
+            }
+
+            function toggleSmallWindow() {
+                if (!isSmallWindow) {
+                    smallWindowContainer.classList.add('show');
+                    smallWindowPlayer.currentTime = videoPlayer.currentTime;
+                    smallWindowPlayer.playbackRate = videoPlayer.playbackRate;
+                    if (isPlaying) {
+                        smallWindowPlayer.play();
+                    } else {
+                        smallWindowPlayer.pause();
+                    }
+                    videoPlayer.style.visibility = 'hidden';
+                    customControls.style.visibility = 'hidden';
+                    isSmallWindow = true;
+                    smallWindowBtn.innerHTML = '<i class="fas fa-window-restore"></i>';
+                } else {
+                    smallWindowContainer.classList.remove('show');
+                    videoPlayer.currentTime = smallWindowPlayer.currentTime;
+                    videoPlayer.style.visibility = 'visible';
+                    customControls.style.visibility = 'visible';
+                    isSmallWindow = false;
+                    smallWindowBtn.innerHTML = '<i class="fas fa-window-minimize"></i>';
+                }
+            }
+
+            function showControls() {
+                if (!controlsVisible) {
+                    controlsVisible = true;
+                    customControls.classList.add('show');
+                    centerPlayBtn.classList.remove('show');
+                }
+                clearTimeout(controlsTimeout);
+                controlsTimeout = setTimeout(() => {
+                    if (isPlaying && !isFullscreen) {
+                        hideControls();
+                    }
+                }, 3000);
+            }
+
+            function hideControls() {
+                controlsVisible = false;
+                customControls.classList.remove('show');
+                updateCenterPlayButton();
+            }
+
+            function initializePlayback() {
+                if (!isPlaying && videoPlayer.src) {
+                    isPlaying = true;
+                    videoPlayer.play().catch(err => {
+                        console.error('播放失败:', err);
+                        isPlaying = false;
+                        updatePlayPauseIcon();
+                        updateCenterPlayButton();
+                        if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) {
+                            showCustomAlert('请点击播放按钮开始播放视频');
+                        }
+                    });
+                }
+            }
+
+            function startLongPress(e) {
+                isLongPress = false;
+                isLongPressMoving = false;
+                longPressStartTime = Date.now();
+                
+                if (e.type === 'touchstart') {
+                    longPressStartY = e.touches[0].clientY;
+                    longPressStartX = e.touches[0].clientX;
+                } else {
+                    longPressStartY = e.clientY;
+                    longPressStartX = e.clientX;
+                }
+
+                longPressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    
+                    if (!hasShownLongPressHint) {
+                        longPressHint.classList.add('show');
+                        hasShownLongPressHint = true;
+                        localStorage.setItem('hasShownLongPressHint', 'true');
+                        
+                        setTimeout(() => {
+                            longPressHint.classList.remove('show');
+                        }, 3000);
+                    }
+                    
+                    if (!isSpeedLocked) {
+                        videoPlayer.playbackRate = 2;
+                        smallWindowPlayer.playbackRate = 2;
+                        playbackRateBtn.textContent = '2x';
+                    }
+                }, 500);
+            }
+
+            function handleLongPressMove(e) {
+                if (!isLongPress) return;
+                
+                let currentY, currentX;
+                if (e.type === 'touchmove') {
+                    currentY = e.touches[0].clientY;
+                    currentX = e.touches[0].clientX;
+                } else {
+                    currentY = e.clientY;
+                    currentX = e.clientX;
+                }
+                
+                const deltaY = currentY - longPressStartY;
+                const deltaX = currentX - longPressStartX;
+                
+                if (Math.abs(deltaY) > 30 || Math.abs(deltaX) > 30) {
+                    isLongPressMoving = true;
+                }
+            }
+
+            function endLongPress(e) {
+                clearTimeout(longPressTimer);
+                
+                if (isLongPress) {
+                    let currentY;
+                    if (e.type === 'touchend') {
+                        currentY = e.changedTouches[0].clientY;
+                    } else {
+                        currentY = e.clientY;
+                    }
+                    
+                    const deltaY = currentY - longPressStartY;
+                    
+                    if (deltaY > 50) {
+                        toggleSpeedLock();
+                    } else if (!isSpeedLocked && !isLongPressMoving) {
+                        videoPlayer.playbackRate = defaultPlaybackRate;
+                        smallWindowPlayer.playbackRate = defaultPlaybackRate;
+                        playbackRateBtn.textContent = `${defaultPlaybackRate}x`;
+                    }
+                    
+                    isLongPress = false;
+                }
+            }
+
+            function toggleSpeedLock() {
+                isSpeedLocked = !isSpeedLocked;
+                
+                if (isSpeedLocked) {
+                    speedLockIndicator.classList.add('show');
+                    playbackRateBtn.classList.add('locked');
+                    videoPlayer.playbackRate = 2;
+                    smallWindowPlayer.playbackRate = 2;
+                    playbackRateBtn.textContent = '2x';
+                    
+                    setTimeout(() => {
+                        speedLockIndicator.classList.remove('show');
+                    }, 2000);
+                } else {
+                    speedLockIndicator.classList.remove('show');
+                    playbackRateBtn.classList.remove('locked');
+                    videoPlayer.playbackRate = defaultPlaybackRate;
+                    smallWindowPlayer.playbackRate = defaultPlaybackRate;
+                    playbackRateBtn.textContent = `${defaultPlaybackRate}x`;
+                    
+                    const span = speedLockIndicator.querySelector('span');
+                    const icon = speedLockIndicator.querySelector('i');
+                    span.textContent = '倍速已解锁';
+                    icon.className = 'fas fa-unlock';
+                    speedLockIndicator.classList.add('show');
+                    
+                    setTimeout(() => {
+                        speedLockIndicator.classList.remove('show');
+                        setTimeout(() => {
+                            span.textContent = '倍速已锁定';
+                            icon.className = 'fas fa-lock';
+                        }, 300);
+                    }, 2000);
+                }
+            }
+
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = Math.floor(seconds % 60);
+                return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+            }
+
+            window.addEventListener('beforeunload', () => {
+                savePlaybackProgress();
+            });
+            
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    savePlaybackProgress();
+                }
+            });
+
+            function setupEventListeners() {
+                document.addEventListener('click', initializePlayback, { once: true });
+                document.addEventListener('touchstart', initializePlayback, { once: true, passive: true });
+                
+                playPauseBtn.addEventListener('click', togglePlayPause);
+                centerPlayBtn.addEventListener('click', togglePlayPause);
+                nextEpisodeBtn.addEventListener('click', nextEpisode);
+                prevEpisodeBtn.addEventListener('click', prevEpisode);
+                playbackRateBtn.addEventListener('click', togglePlaybackRate);
+                fullscreenBtn.addEventListener('click', toggleFullscreen);
+                smallWindowBtn.addEventListener('click', toggleSmallWindow);
+                episodeListBtn.addEventListener('click', showEpisodeList);
+                episodeListBtn2.addEventListener('click', showEpisodeList);
+
+                videoPlayer.addEventListener('click', (e) => {
+                    if (isLongPress) return;
+                    
+                    if (!controlsVisible) {
+                        showControls();
+                    } else {
+                        hideControls();
+                    }
+                });
+                
+                smallWindowPlayer.addEventListener('click', togglePlayPause);
+
+                videoPlayer.addEventListener('play', () => {
+                    isPlaying = true;
+                    updatePlayPauseIcon();
+                    updateCenterPlayButton();
+                });
+
+                videoPlayer.addEventListener('pause', () => {
+                    isPlaying = false;
+                    updatePlayPauseIcon();
+                    updateCenterPlayButton();
+                });
+
+                videoPlayer.addEventListener('ended', nextEpisode);
+                smallWindowPlayer.addEventListener('ended', nextEpisode);
+
+                videoPlayer.addEventListener('timeupdate', () => {
+                    const percent = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+                    progressFilled.style.width = `${percent}%`;
+                    
+                    if (videoPlayer.buffered.length > 0) {
+                        const bufferedEnd = videoPlayer.buffered.end(videoPlayer.buffered.length - 1);
+                        const bufferedPercent = (bufferedEnd / videoPlayer.duration) * 100;
+                        progressBuffered.style.width = `${bufferedPercent}%`;
+                    }
+
+                    const currentTime = formatTime(videoPlayer.currentTime);
+                    const duration = formatTime(videoPlayer.duration);
+                    timeDisplay.textContent = `${currentTime} / ${duration}`;
+
+                    if (Math.floor(videoPlayer.currentTime) % 3 === 0) {
+                        savePlaybackProgress();
+                    }
+                });
+
+                smallWindowPlayer.addEventListener('timeupdate', () => {
+                    if (isSmallWindow) {
+                        videoPlayer.currentTime = smallWindowPlayer.currentTime;
+                    }
+                });
+
+                progressBar.addEventListener('click', (e) => {
+                    const progressTime = (e.offsetX / progressBar.offsetWidth) * videoPlayer.duration;
+                    videoPlayer.currentTime = progressTime;
+                    smallWindowPlayer.currentTime = progressTime;
+                });
+
+                closeEpisodeListBtn.addEventListener('click', hideEpisodeList);
+                episodeListModal.addEventListener('click', (e) => {
+                    if (e.target === episodeListModal) {
+                        hideEpisodeList();
+                    }
+                });
+
+                closeCustomAlertBtn.addEventListener('click', hideCustomAlert);
+                customAlertOverlay.addEventListener('click', hideCustomAlert);
+
+                closeSmallWindowBtn.addEventListener('click', toggleSmallWindow);
+
+                videoPlayer.addEventListener('mousedown', startLongPress);
+                videoPlayer.addEventListener('touchstart', startLongPress, { passive: true });
+                
+                videoPlayer.addEventListener('mousemove', handleLongPressMove);
+                videoPlayer.addEventListener('touchmove', handleLongPressMove, { passive: true });
+                
+                videoPlayer.addEventListener('mouseup', endLongPress);
+                videoPlayer.addEventListener('mouseleave', endLongPress);
+                videoPlayer.addEventListener('touchend', endLongPress);
+
+                document.addEventListener('fullscreenchange', () => {
+                    isFullscreen = !!document.fullscreenElement;
+                    fullscreenBtn.innerHTML = isFullscreen ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+                    if (isFullscreen) {
+                        videoWrapper.classList.add('fullscreen');
+                    } else {
+                        videoWrapper.classList.remove('fullscreen');
+                    }
+                });
+
+                document.addEventListener('webkitfullscreenchange', () => {
+                    isFullscreen = !!document.webkitFullscreenElement;
+                    fullscreenBtn.innerHTML = isFullscreen ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+                });
+
+                videoPlayer.addEventListener('touchstart', (e) => {
+                    if (isTransitioning) return;
+                    
+                    touchStartY = e.touches[0].clientY;
+                    touchStartX = e.touches[0].clientX;
+                    lastTouchY = touchStartY;
+                }, { passive: true });
+
+                videoPlayer.addEventListener('touchmove', (e) => {
+                    if (isTransitioning || isLongPress) return;
+                    
+                    lastTouchY = e.touches[0].clientY;
+                }, { passive: true });
+
+                videoPlayer.addEventListener('touchend', (e) => {
+                    if (isTransitioning || isLongPress || isLongPressMoving || !touchStartY) return;
+                    
+                    const endY = lastTouchY;
+                    const endX = e.changedTouches[0].clientX;
+                    const diffY = endY - touchStartY;
+                    const diffX = endX - touchStartX;
+
+                    if (Math.abs(diffY) > 80 && Math.abs(diffY) > Math.abs(diffX) * 1.5) {
+                        if (diffY < 0) {
+                            nextEpisode();
+                        } else {
+                            prevEpisode();
+                        }
+                    }
+
+                    touchStartY = 0;
+                    touchStartX = 0;
+                });
+
+                customControls.addEventListener('mouseenter', () => {
+                    clearTimeout(controlsTimeout);
+                    if (!controlsVisible) {
+                        showControls();
+                    }
+                });
+
+                customControls.addEventListener('mouseleave', () => {
+                    if (isPlaying && controlsVisible) {
+                        controlsTimeout = setTimeout(() => {
+                            hideControls();
+                        }, 1000);
+                    }
+                });
+
+                showControls();
+            }
+        });
+    </script>
+</body>
+</html>
