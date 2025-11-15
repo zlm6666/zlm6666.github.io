@@ -1,0 +1,2110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="icon" href="./assets/favicon.ico" type="image/x-icon">
+    <title>阅读 - 番茄小说</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Microsoft YaHei', sans-serif;
+            background: #f5f1e8;
+            min-height: 100vh;
+            transition: background 0.5s ease;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.3s ease;
+        }
+
+        .header.hidden {
+            transform: translateY(-100%);
+        }
+
+        .header a {
+            color: #F54E00;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+
+        .header a:hover {
+            background: rgba(245, 78, 0, 0.1);
+            transform: translateX(-2px);
+        }
+
+        .header a:last-child:hover {
+            transform: translateX(2px);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #F54E00 0%, #FF6B2C 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            flex: 1;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 0 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 100px 20px 100px;
+            animation: fadeIn 0.8s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .chapter-section {
+            margin-bottom: 60px;
+        }
+
+        .chapter-header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .chapter-title {
+            font-size: 28px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #F54E00 0%, #FF6B2C 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .chapter-info {
+            color: #999;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .chapter-info i {
+            color: #F54E00;
+        }
+
+        .chapter-content {
+            background: white;
+            padding: 50px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            line-height: 2.2;
+            font-size: 18px;
+            color: #333;
+            min-height: 60vh;
+            position: relative;
+            overflow: hidden;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            transition: background 0.5s ease, color 0.5s ease, box-shadow 0.3s ease;
+        }
+
+        .chapter-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #F54E00, #FF6B2C, #FFB088);
+        }
+
+        .chapter-content p {
+            margin-bottom: 1.8em;
+            text-indent: 2em;
+            text-align: justify;
+        }
+
+        .chapter-content p:first-of-type::first-letter {
+            font-size: 2em;
+            font-weight: bold;
+            color: #F54E00;
+            line-height: 1;
+            margin-right: 5px;
+        }
+
+        .chapter-content img {
+            max-width: 100%;
+            width: auto;
+            height: auto;
+            display: block;
+            margin: 30px auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: all 0.3s;
+            object-fit: contain;
+        }
+
+        .chapter-content img:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 30px rgba(0,0,0,0.25);
+        }
+
+        .chapter-content p:has(img) {
+            text-indent: 0;
+            text-align: center;
+            margin: 0;
+        }
+
+        .chapter-content p:has(img) + p {
+            margin-top: 1.8em;
+        }
+
+        .chapter-divider {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+            font-size: 14px;
+            position: relative;
+            transition: color 0.5s ease;
+        }
+
+        .chapter-divider::before,
+        .chapter-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: linear-gradient(to right, transparent, #ddd, transparent);
+            transition: background 0.5s ease;
+        }
+
+        .chapter-divider::before {
+            left: 0;
+        }
+
+        .chapter-divider::after {
+            right: 0;
+        }
+
+        .loading-next {
+            text-align: center;
+            padding: 40px 20px;
+            color: #F54E00;
+            font-size: 16px;
+        }
+
+        .loading-next .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(245, 78, 0, 0.2);
+            border-top-color: #F54E00;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        .nav-buttons {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
+            z-index: 90;
+            transition: transform 0.3s ease;
+        }
+
+        .nav-buttons.hidden {
+            transform: translateY(100%);
+        }
+
+        .nav-btn {
+            padding: 12px 35px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-btn i {
+            font-size: 14px;
+        }
+
+        .nav-btn-prev {
+            background: white;
+            color: #F54E00;
+            border: 2px solid #F54E00;
+        }
+
+        .nav-btn-prev:hover:not(:disabled) {
+            background: #F54E00;
+            color: white;
+            transform: translateX(-5px);
+        }
+
+        .nav-btn-next {
+            background: linear-gradient(135deg, #F54E00 0%, #FF6B2C 100%);
+            color: white;
+        }
+
+        .nav-btn-next:hover:not(:disabled) {
+            transform: translateX(5px);
+            box-shadow: 0 6px 25px rgba(245, 78, 0, 0.4);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .nav-btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        .settings-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 30px;
+            box-shadow: 0 -4px 30px rgba(0,0,0,0.15);
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 200;
+            border-radius: 25px 25px 0 0;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .settings-panel.show {
+            transform: translateY(0);
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .settings-header h3 {
+            font-size: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .settings-header h3 i {
+            color: #F54E00;
+        }
+
+        .close-settings-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .close-settings-btn:hover {
+            background: #f0f0f0;
+            color: #F54E00;
+            transform: rotate(90deg);
+        }
+
+        .settings-group {
+            margin-bottom: 25px;
+        }
+
+        .settings-label {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .settings-label i {
+            color: #F54E00;
+            font-size: 14px;
+        }
+
+        .settings-options {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .option-btn {
+            padding: 10px 24px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            color: #666;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, #F54E00 0%, #FF6B2C 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: -1;
+        }
+
+        .option-btn:hover {
+            border-color: #F54E00;
+            color: #F54E00;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 78, 0, 0.2);
+        }
+
+        .option-btn.active {
+            background: linear-gradient(135deg, #F54E00 0%, #FF6B2C 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(245, 78, 0, 0.4);
+        }
+
+        .option-btn.active::before {
+            opacity: 1;
+        }
+
+        .settings-toggle {
+            position: fixed;
+            bottom: 90px;
+            left: 30px;
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, #F54E00 0%, #FF6B2C 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 22px;
+            cursor: pointer;
+            box-shadow: 0 6px 25px rgba(245, 78, 0, 0.4);
+            z-index: 150;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-toggle.hidden {
+            transform: translateY(150px);
+            opacity: 0;
+        }
+
+        .settings-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 35px rgba(245, 78, 0, 0.6);
+        }
+
+        .settings-toggle.hidden:hover {
+            transform: translateY(150px) scale(1.1);
+        }
+
+        .settings-toggle:active {
+            transform: scale(1.05);
+        }
+
+        .catalog-toggle {
+            position: fixed;
+            bottom: 90px;
+            right: 30px;
+            width: 55px;
+            height: 55px;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 22px;
+            cursor: pointer;
+            box-shadow: 0 6px 25px rgba(17, 153, 142, 0.4);
+            z-index: 150;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .catalog-toggle.hidden {
+            transform: translateY(150px);
+            opacity: 0;
+        }
+
+        .catalog-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 35px rgba(17, 153, 142, 0.6);
+        }
+
+        .catalog-toggle.hidden:hover {
+            transform: translateY(150px) scale(1.1);
+        }
+
+        .catalog-toggle:active {
+            transform: scale(1.05);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 80px 20px;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(245, 78, 0, 0.2);
+            border-top-color: #F54E00;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .catalog-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            z-index: 300;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .catalog-modal.show {
+            display: flex;
+        }
+
+        .image-preview-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(10px);
+            z-index: 400;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .image-preview-modal.show {
+            display: flex;
+        }
+
+        .image-preview-content {
+            max-width: 95%;
+            max-height: 95vh;
+            position: relative;
+            animation: zoomIn 0.3s ease;
+        }
+
+        @keyframes zoomIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .image-preview-content img {
+            width: auto;
+            max-width: 100%;
+            max-height: 90vh;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+            display: block;
+        }
+
+        .image-preview-close {
+            position: absolute;
+            top: -50px;
+            right: 0;
+            background: white;
+            color: #333;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .image-preview-close:hover {
+            background: #F54E00;
+            color: white;
+            transform: rotate(90deg);
+        }
+
+        .catalog-content {
+            background: white;
+            border-radius: 25px;
+            width: 100%;
+            max-width: 700px;
+            max-height: 85vh;
+            overflow: hidden;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .catalog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 25px 30px;
+            border-bottom: 2px solid #f0f0f0;
+            background: linear-gradient(135deg, rgba(245, 78, 0, 0.05) 0%, rgba(255, 107, 44, 0.05) 100%);
+        }
+
+        .catalog-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .catalog-title i {
+            color: #F54E00;
+        }
+
+        .close-btn {
+            background: white;
+            border: 2px solid #e0e0e0;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .close-btn:hover {
+            background: #F54E00;
+            color: white;
+            border-color: #F54E00;
+            transform: rotate(90deg);
+        }
+
+        .catalog-list {
+            padding: 20px 30px;
+            overflow-y: auto;
+            display: grid;
+            gap: 10px;
+        }
+
+        .catalog-item {
+            padding: 14px 18px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            border: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .catalog-item::before {
+            content: '';
+            width: 4px;
+            height: 4px;
+            background: #999;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .catalog-item:hover {
+            background: white;
+            color: #F54E00;
+            border-color: #F54E00;
+            transform: translateX(5px);
+            box-shadow: 0 3px 12px rgba(245, 78, 0, 0.2);
+        }
+
+        .catalog-item.active {
+            background: linear-gradient(135deg, #F54E00 0%, #FF6B2C 100%);
+            color: white;
+            font-weight: 600;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(245, 78, 0, 0.4);
+        }
+
+        .catalog-item.active::before {
+            background: white;
+        }
+
+        /* 夜间模式样式 */
+        body.dark-mode {
+            background: #1a1a1a;
+        }
+
+        body.dark-mode .header {
+            background: rgba(30, 30, 30, 0.95);
+        }
+
+        body.dark-mode .header a {
+            color: #FF8B5A;
+        }
+
+        body.dark-mode .header a:hover {
+            background: rgba(255, 139, 90, 0.1);
+        }
+
+        body.dark-mode .nav-buttons {
+            background: rgba(30, 30, 30, 0.95);
+        }
+
+        body.dark-mode .nav-btn-prev {
+            background: #333;
+            color: #FF8B5A;
+            border-color: #FF8B5A;
+        }
+
+        body.dark-mode .nav-btn-prev:hover:not(:disabled) {
+            background: #FF8B5A;
+            color: white;
+        }
+
+        body.dark-mode .header-title,
+        body.dark-mode .chapter-title {
+            background: linear-gradient(135deg, #FF8B5A 0%, #FFB088 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        body.dark-mode .chapter-content {
+            background: #2b2b2b;
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .chapter-info {
+            color: #888;
+        }
+
+        body.dark-mode .settings-panel,
+        body.dark-mode .catalog-content {
+            background: #2b2b2b;
+        }
+
+        body.dark-mode .settings-header,
+        body.dark-mode .catalog-header {
+            border-bottom-color: #444;
+            background: rgba(245, 78, 0, 0.1);
+        }
+
+        body.dark-mode .settings-header h3,
+        body.dark-mode .catalog-title {
+            color: #e0e0e0;
+        }
+
+        body.dark-mode .option-btn {
+            background: #333;
+            border-color: #444;
+            color: #ccc;
+        }
+
+        body.dark-mode .option-btn:hover {
+            border-color: #FF8B5A;
+            color: #FF8B5A;
+            background: #3a3a3a;
+        }
+
+        body.dark-mode .option-btn.active {
+            background: linear-gradient(135deg, #FF8B5A 0%, #FFB088 100%);
+            color: white;
+            border-color: transparent;
+        }
+
+        body.dark-mode .catalog-item {
+            background: #333;
+            color: #ccc;
+        }
+
+        body.dark-mode .catalog-item::before {
+            background: #666;
+        }
+
+        body.dark-mode .chapter-content img {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        body.dark-mode .image-preview-close {
+            background: #333;
+            color: #fff;
+        }
+
+        body.dark-mode .image-preview-close:hover {
+            background: #F54E00;
+        }
+
+        body.dark-mode .chapter-divider {
+            color: #666;
+        }
+
+        body.dark-mode .chapter-divider::before,
+        body.dark-mode .chapter-divider::after {
+            background: linear-gradient(to right, transparent, #444, transparent);
+        }
+
+        body.dark-mode .loading-next {
+            color: #FF8B5A;
+        }
+
+        /* 主题特效 */
+        body[data-theme="paper"] .chapter-content {
+            background-image: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(139, 119, 101, 0.03) 0px,
+                    rgba(139, 119, 101, 0.03) 1px,
+                    transparent 1px,
+                    transparent 2px
+                ),
+                repeating-linear-gradient(
+                    90deg,
+                    rgba(139, 119, 101, 0.03) 0px,
+                    rgba(139, 119, 101, 0.03) 1px,
+                    transparent 1px,
+                    transparent 2px
+                );
+            box-shadow: 0 4px 20px rgba(101, 67, 33, 0.15);
+        }
+
+        body[data-theme="dark"] .chapter-content::before,
+        body[data-theme="night"] .chapter-content::before {
+            background: linear-gradient(90deg, #F54E00, #FF6B2C);
+        }
+
+        body[data-theme="pink"] .chapter-content::before {
+            background: linear-gradient(90deg, #ff6b9d, #c44569);
+        }
+
+        body[data-theme="blue"] .chapter-content::before {
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+        }
+
+        body[data-theme="green"] .chapter-content::before {
+            background: linear-gradient(90deg, #11998e, #38ef7d);
+        }
+
+        body[data-theme="warm"] .chapter-content::before {
+            background: linear-gradient(90deg, #f093fb, #f5576c);
+        }
+
+        body[data-theme="paper"] .chapter-content::before {
+            background: linear-gradient(90deg, #c9a869, #8b7355);
+        }
+
+        body[data-theme="dark"] .chapter-content,
+        body[data-theme="night"] .chapter-content {
+            box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+        }
+
+        /* 不同主题下的标题渐变色 */
+        body[data-theme="pink"] .chapter-title,
+        body[data-theme="pink"] .header-title {
+            background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        body[data-theme="blue"] .chapter-title,
+        body[data-theme="blue"] .header-title {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        body[data-theme="green"] .chapter-title,
+        body[data-theme="green"] .header-title {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        body[data-theme="warm"] .chapter-title,
+        body[data-theme="warm"] .header-title {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        body[data-theme="paper"] .chapter-title,
+        body[data-theme="paper"] .header-title {
+            background: linear-gradient(135deg, #c9a869 0%, #8b7355 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* 移动端优化 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 70px 15px 80px;
+            }
+
+            .header {
+                padding: 12px 15px;
+            }
+
+            .chapter-content {
+                padding: 30px 20px;
+                font-size: 16px;
+                line-height: 2;
+            }
+
+            .chapter-content img {
+                margin: 20px auto;
+                border-radius: 8px;
+                max-width: 100%;
+                width: auto !important;
+            }
+
+            .chapter-content img:hover {
+                transform: scale(1.01);
+            }
+
+            .chapter-title {
+                font-size: 22px;
+            }
+
+            .nav-buttons {
+                padding: 12px 15px;
+                gap: 10px;
+            }
+
+            .nav-btn {
+                flex: 1;
+                justify-content: center;
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+
+            .header-title {
+                font-size: 14px;
+            }
+
+            .settings-panel {
+                padding: 20px;
+            }
+
+            .settings-toggle {
+                width: 48px;
+                height: 48px;
+                bottom: 75px;
+                left: 20px;
+                font-size: 20px;
+            }
+
+            .catalog-toggle {
+                width: 48px;
+                height: 48px;
+                bottom: 75px;
+                right: 20px;
+                font-size: 20px;
+            }
+
+            .catalog-content {
+                max-height: 90vh;
+            }
+
+            .catalog-header {
+                padding: 20px;
+            }
+
+            .catalog-title {
+                font-size: 18px;
+            }
+
+            .catalog-list {
+                padding: 15px 20px;
+            }
+
+            .image-preview-close {
+                top: 10px;
+                right: 10px;
+                width: 35px;
+                height: 35px;
+                font-size: 20px;
+            }
+
+            .image-preview-content {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 70px 15px 90px;
+            }
+
+            .chapter-content {
+                padding: 25px 15px;
+                font-size: 15px;
+            }
+
+            .chapter-content img {
+                margin: 15px auto;
+                max-width: 100%;
+                width: auto !important;
+            }
+
+            .chapter-content img:hover {
+                transform: scale(1);
+            }
+
+            .chapter-title {
+                font-size: 20px;
+            }
+
+            .nav-buttons {
+                padding: 10px;
+                gap: 8px;
+            }
+
+            .nav-btn {
+                padding: 10px 18px;
+                font-size: 13px;
+            }
+
+            .nav-btn span {
+                display: none;
+            }
+
+            .settings-options {
+                gap: 8px;
+            }
+
+            .option-btn {
+                padding: 8px 18px;
+                font-size: 13px;
+            }
+
+            .settings-toggle {
+                width: 45px;
+                height: 45px;
+                bottom: 70px;
+                left: 15px;
+                font-size: 18px;
+            }
+
+            .catalog-toggle {
+                width: 45px;
+                height: 45px;
+                bottom: 70px;
+                right: 15px;
+                font-size: 18px;
+            }
+
+            .image-preview-close {
+                width: 32px;
+                height: 32px;
+                font-size: 18px;
+            }
+
+            .image-preview-content img {
+                max-height: 80vh;
+            }
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f0f0f0;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #F54E00;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #FF6B2C;
+        }
+
+        body.dark-mode ::-webkit-scrollbar-track {
+            background: #2b2b2b;
+        }
+
+        body.dark-mode ::-webkit-scrollbar-thumb {
+            background: #FF8B5A;
+        }
+    </style>
+</head>
+<body>
+    <div class="header" id="header">
+        <a href="#" onclick="history.back(); return false;">
+            <i class="fas fa-arrow-left"></i>
+            <span>返回</span>
+        </a>
+        <div class="header-title" id="headerTitle">加载中...</div>
+        <div style="width: 80px;"></div>
+    </div>
+
+    <div class="container" id="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <div><i class="fas fa-book-reader"></i> 正在加载章节...</div>
+        </div>
+        <div id="content" style="display: none;"></div>
+    </div>
+
+    <button class="settings-toggle" id="settingsToggle" onclick="toggleSettings()">
+        <i class="fas fa-cog"></i>
+    </button>
+
+    <button class="catalog-toggle" id="catalogToggle" onclick="showCatalog()">
+        <i class="fas fa-list"></i>
+    </button>
+
+    <div class="nav-buttons" id="navButtons">
+        <button class="nav-btn nav-btn-prev" id="prevBtn" onclick="prevChapter()">
+            <i class="fas fa-chevron-left"></i>
+            <span>上一章</span>
+        </button>
+        <button class="nav-btn nav-btn-next" id="nextBtn" onclick="nextChapter()">
+            <span>下一章</span>
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <h3>
+                <i class="fas fa-sliders-h"></i>
+                <span>阅读设置</span>
+            </h3>
+            <button class="close-settings-btn" onclick="toggleSettings()">×</button>
+        </div>
+        
+        <div class="settings-group">
+            <label class="settings-label">
+                <i class="fas fa-text-height"></i>
+                字体大小
+            </label>
+            <div class="settings-options" id="fontSizeOptions">
+                <button class="option-btn" onclick="setFontSize(14)">极小</button>
+                <button class="option-btn" onclick="setFontSize(16)">小</button>
+                <button class="option-btn active" onclick="setFontSize(18)">中</button>
+                <button class="option-btn" onclick="setFontSize(20)">大</button>
+                <button class="option-btn" onclick="setFontSize(22)">特大</button>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <label class="settings-label">
+                <i class="fas fa-arrows-alt-v"></i>
+                行间距
+            </label>
+            <div class="settings-options" id="lineHeightOptions">
+                <button class="option-btn" onclick="setLineHeight(1.6)">紧凑</button>
+                <button class="option-btn" onclick="setLineHeight(1.8)">适中</button>
+                <button class="option-btn active" onclick="setLineHeight(2.2)">舒适</button>
+                <button class="option-btn" onclick="setLineHeight(2.6)">宽松</button>
+                <button class="option-btn" onclick="setLineHeight(3.0)">超宽</button>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <label class="settings-label">
+                <i class="fas fa-paragraph"></i>
+                段落间距
+            </label>
+            <div class="settings-options" id="paragraphSpacingOptions">
+                <button class="option-btn" onclick="setParagraphSpacing(1.0)">紧凑</button>
+                <button class="option-btn" onclick="setParagraphSpacing(1.5)">适中</button>
+                <button class="option-btn active" onclick="setParagraphSpacing(1.8)">舒适</button>
+                <button class="option-btn" onclick="setParagraphSpacing(2.2)">宽松</button>
+                <button class="option-btn" onclick="setParagraphSpacing(2.6)">超宽</button>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <label class="settings-label">
+                <i class="fas fa-indent"></i>
+                首行缩进
+            </label>
+            <div class="settings-options" id="textIndentOptions">
+                <button class="option-btn" onclick="setTextIndent(0)">无缩进</button>
+                <button class="option-btn active" onclick="setTextIndent(2)">2字符</button>
+                <button class="option-btn" onclick="setTextIndent(4)">4字符</button>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <label class="settings-label">
+                <i class="fas fa-align-left"></i>
+                页面宽度
+            </label>
+            <div class="settings-options" id="pageWidthOptions">
+                <button class="option-btn" onclick="setPageWidth(700)">窄</button>
+                <button class="option-btn active" onclick="setPageWidth(900)">中</button>
+                <button class="option-btn" onclick="setPageWidth(1100)">宽</button>
+                <button class="option-btn" onclick="setPageWidth('100%')">超宽</button>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <label class="settings-label">
+                <i class="fas fa-palette"></i>
+                背景主题
+            </label>
+            <div class="settings-options" id="bgColorOptions">
+                <button class="option-btn active" onclick="setTheme('default')">🌾 护眼</button>
+                <button class="option-btn" onclick="setTheme('white')">☀️ 纯白</button>
+                <button class="option-btn" onclick="setTheme('green')">🌊 青翠</button>
+                <button class="option-btn" onclick="setTheme('pink')">🌸 粉樱</button>
+                <button class="option-btn" onclick="setTheme('blue')">🌌 深海</button>
+                <button class="option-btn" onclick="setTheme('warm')">🍂 暖秋</button>
+                <button class="option-btn" onclick="setTheme('paper')">📜 羊皮</button>
+                <button class="option-btn" onclick="setTheme('night')">🌙 夜间</button>
+                <button class="option-btn" onclick="setTheme('dark')">🌑 暗黑</button>
+            </div>
+        </div>
+
+        <div class="settings-group">
+            <label class="settings-label">
+                <i class="fas fa-scroll"></i>
+                无限滚动
+            </label>
+            <div class="settings-options" id="infiniteScrollOptions">
+                <button class="option-btn active" onclick="setInfiniteScroll(true)">开启</button>
+                <button class="option-btn" onclick="setInfiniteScroll(false)">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="catalog-modal" id="catalogModal" onclick="closeCatalogIfOutside(event)">
+        <div class="catalog-content" onclick="event.stopPropagation()">
+            <div class="catalog-header">
+                <h2 class="catalog-title">
+                    <i class="fas fa-book-open"></i>
+                    <span>章节目录</span>
+                </h2>
+                <button class="close-btn" onclick="closeCatalog()">×</button>
+            </div>
+            <div class="catalog-list" id="catalogList"></div>
+        </div>
+    </div>
+
+    <div class="image-preview-modal" id="imagePreviewModal" onclick="closeImagePreview()">
+        <div class="image-preview-content" onclick="event.stopPropagation()">
+            <button class="image-preview-close" onclick="closeImagePreview()">×</button>
+            <img id="previewImage" src="" alt="预览图片">
+        </div>
+    </div>
+
+    <script>
+        let bookId = '';
+        let currentItemId = '';
+        let chapterList = [];
+        let currentIndex = -1;
+        let lastScrollTop = 0;
+        let isControlsVisible = true;
+        let isLoadingNext = false;
+        let infiniteScrollEnabled = true;
+        let loadedChapters = new Set();
+        window.onload = async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            bookId = urlParams.get('book_id');
+            currentItemId = urlParams.get('item_id');
+            if (!bookId || !currentItemId) {
+                alert('缺少必要参数');
+                return
+            }
+            restoreSettings();
+            await loadChapterList();
+            await loadChapter()
+        };
+        async function loadChapterList() {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+                const response = await fetch(`https://fq.shusan.cn/api/book?book_id=${bookId}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                const data = await response.json();
+                console.log('章节列表数据:', data);
+                if (data && data.code === 200 && data.data && data.data.data) {
+                    chapterList = data.data.data.chapterListWithVolume.flat();
+                    currentIndex = chapterList.findIndex(c => c.itemId === currentItemId);
+                    if (currentIndex === -1) {
+                        console.warn('未找到当前章节，使用第一章');
+                        currentIndex = 0;
+                        if (chapterList.length > 0) {
+                            currentItemId = chapterList[0].itemId
+                        }
+                    }
+                    console.log('章节列表加载成功，共', chapterList.length, '章');
+                    updateNavButtons();
+                    loadCatalogList()
+                } else {
+                    throw new Error('章节列表数据格式错误');
+                }
+            } catch (error) {
+                console.error('加载章节列表失败:', error);
+                alert('无法加载章节列表，请刷新页面重试\n错误: ' + error.message)
+            }
+        }
+        async function loadChapter(append = false) {
+            if (!append) {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('content').style.display = 'none'
+            }
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+                const response = await fetch(`https://fq.shusan.cn/api/content?item_id=${currentItemId}&tab=小说`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                const data = await response.json();
+                console.log('加载章节数据:', data);
+                if (data && data.code === 200 && data.data) {
+                    displayChapter(data.data, append);
+                    if (!append) {
+                        window.scrollTo({
+                            top: 0,
+                            behavior: 'smooth'
+                        })
+                    }
+                    saveReadingProgress();
+                    loadedChapters.add(currentItemId)
+                } else {
+                    console.error('数据格式异常:', data);
+                    throw new Error('数据格式错误: code=' + (data?.code || 'undefined'));
+                }
+            } catch (error) {
+                console.error('加载章节详细错误:', error);
+                if (!append) {
+                    const errorMsg = error.name === 'AbortError' ? '请求超时，请检查网络' : error.message || '加载失败';
+                    document.getElementById('content').innerHTML = `<div style="text-align: center; padding: 80px 20px; color: #f56565;"><i class="fas fa-exclamation-circle"style="font-size: 50px; margin-bottom: 20px;"></i><div style="font-size: 18px; margin-bottom: 10px;">加载失败</div><div style="font-size: 14px; color: #999; margin-bottom: 5px;">${errorMsg}</div><div style="font-size: 12px; color: #ccc;">章节ID:${currentItemId}</div><button onclick="loadChapter()"style="margin-top: 20px; padding: 12px 30px; background: linear-gradient(135deg, #F54E00 0%, #FF6B2C 100%); color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 15px;">重新加载</button></div>`
+                }
+            } finally {
+                if (!append) {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('content').style.display = 'block'
+                }
+            }
+        }
+
+        function bindContentClickEvent() {
+            const sections = document.querySelectorAll('.chapter-section');
+            sections.forEach(section => {
+                const content = section.querySelector('.chapter-content');
+                if (content && !content.hasClickListener) {
+                    bindClickEventToElement(content)
+                }
+            })
+        }
+
+        function bindClickEventToElement(content) {
+            if (!content.hasClickListener) {
+                content.hasClickListener = true;
+                content.onclick = (e) => {
+                    if (e.target.tagName !== 'IMG') {
+                        if (isControlsVisible) {
+                            hideControls()
+                        } else {
+                            showControls()
+                        }
+                    }
+                }
+            }
+        }
+
+        function displayChapter(data, append = false) {
+            try {
+                const chapter = chapterList[currentIndex];
+                const content = data.content || '';
+                console.log('显示章节:', chapter.title, '内容长度:', content.length);
+                if (!append) {
+                    document.getElementById('headerTitle').textContent = chapter.title;
+                    document.getElementById('content').innerHTML = ''
+                }
+                const chapterSection = document.createElement('div');
+                chapterSection.className = 'chapter-section';
+                chapterSection.dataset.itemId = currentItemId;
+                const chapterHeader = document.createElement('div');
+                chapterHeader.className = 'chapter-header';
+                chapterHeader.innerHTML = `<h1 class="chapter-title">${chapter.title}</h1>`;
+                const chapterContent = document.createElement('div');
+                chapterContent.className = 'chapter-content';
+                let paragraphs = [];
+                if (content && typeof content === 'string') {
+                    paragraphs = content.split('\n').filter(p => p && p.trim())
+                }
+                if (paragraphs.length === 0) {
+                    paragraphs = ['<暂无内容>']
+                }
+                const formattedContent = paragraphs.map(p => `<p>${p}</p>`).join('');
+                chapterContent.innerHTML = formattedContent;
+                chapterSection.appendChild(chapterHeader);
+                chapterSection.appendChild(chapterContent);
+                if (append && currentIndex < chapterList.length - 1) {
+                    const divider = document.createElement('div');
+                    divider.className = 'chapter-divider';
+                    divider.innerHTML = '<i class="fas fa-book"></i> 下一章';
+                    document.getElementById('content').appendChild(divider)
+                }
+                document.getElementById('content').appendChild(chapterSection);
+                applySettingsToElement(chapterContent);
+                bindClickEventToElement(chapterContent);
+                addImagePreviewListeners();
+                updateCatalogActive();
+                console.log('章节显示成功')
+            } catch (error) {
+                console.error('显示章节失败:', error);
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'text-align: center; padding: 40px 20px; color: #f56565;';
+                errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i><div>章节渲染失败</div><div style="font-size: 12px; color: #999; margin-top: 10px;">${error.message}</div>`;
+                document.getElementById('content').appendChild(errorDiv)
+            }
+        }
+        async function loadNextChapterInfinite() {
+            if (!infiniteScrollEnabled || isLoadingNext || currentIndex >= chapterList.length - 1) {
+                return
+            }
+            isLoadingNext = true;
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading-next';
+            loadingDiv.id = 'loadingNext';
+            loadingDiv.innerHTML = '<div class="spinner"></div><div><i class="fas fa-book-reader"></i> 正在加载下一章...</div>';
+            document.getElementById('content').appendChild(loadingDiv);
+            const nextIndex = currentIndex + 1;
+            const nextItemId = chapterList[nextIndex].itemId;
+            if (!loadedChapters.has(nextItemId)) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000);
+                    const response = await fetch(`https://fq.shusan.cn/api/content?item_id=${nextItemId}&tab=小说`, {
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    const data = await response.json();
+                    console.log('无限滚动加载章节:', data);
+                    if (data && data.code === 200 && data.data) {
+                        currentIndex = nextIndex;
+                        currentItemId = nextItemId;
+                        updateURL();
+                        loadingDiv.remove();
+                        displayChapter(data.data, true);
+                        updateNavButtons();
+                        loadedChapters.add(nextItemId)
+                    } else {
+                        throw new Error('数据格式错误: code=' + (data?.code || 'undefined'));
+                    }
+                } catch (error) {
+                    console.error('加载下一章失败:', error);
+                    const errorMsg = error.name === 'AbortError' ? '请求超时' : error.message;
+                    loadingDiv.innerHTML = `<div style="color: #f56565; padding: 20px; text-align: center;"><i class="fas fa-exclamation-circle"></i>加载失败:${errorMsg}<button onclick="retryLoadNextChapter()"style="display: block; margin: 15px auto 0; padding: 10px 25px; background: linear-gradient(135deg, #F54E00 0%, #FF6B2C 100%); color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 14px;">点击重试</button></div>`
+                }
+            }
+            isLoadingNext = false
+        }
+
+        function retryLoadNextChapter() {
+            const loadingDiv = document.getElementById('loadingNext');
+            if (loadingDiv) {
+                loadingDiv.remove()
+            }
+            isLoadingNext = false;
+            loadNextChapterInfinite()
+        }
+
+        function addImagePreviewListeners() {
+            const images = document.querySelectorAll('.chapter-content img');
+            images.forEach(img => {
+                img.onload = function() {
+                    if (this.naturalWidth > this.parentElement.clientWidth) {
+                        this.style.width = '100%';
+                        this.style.height = 'auto'
+                    }
+                };
+                img.onerror = function() {
+                    this.style.display = 'none';
+                    const errorText = document.createElement('p');
+                    errorText.style.textAlign = 'center';
+                    errorText.style.color = '#999';
+                    errorText.style.fontSize = '14px';
+                    errorText.innerHTML = '<i class="fas fa-image"></i> 图片加载失败';
+                    this.parentElement.insertBefore(errorText, this)
+                };
+                if (!img.hasPreviewListener) {
+                    img.hasPreviewListener = true;
+                    img.addEventListener('click', () => {
+                        showImagePreview(img.src)
+                    })
+                }
+            })
+        }
+
+        function showImagePreview(src) {
+            const modal = document.getElementById('imagePreviewModal');
+            const previewImg = document.getElementById('previewImage');
+            previewImg.src = src;
+            modal.classList.add('show')
+        }
+
+        function closeImagePreview() {
+            const modal = document.getElementById('imagePreviewModal');
+            modal.classList.remove('show')
+        }
+
+        function updateNavButtons() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            prevBtn.disabled = currentIndex <= 0;
+            nextBtn.disabled = currentIndex >= chapterList.length - 1
+        }
+
+        function prevChapter() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                currentItemId = chapterList[currentIndex].itemId;
+                updateURL();
+                loadedChapters.clear();
+                loadChapter();
+                updateNavButtons();
+                showControls()
+            }
+        }
+
+        function nextChapter() {
+            if (currentIndex < chapterList.length - 1) {
+                currentIndex++;
+                currentItemId = chapterList[currentIndex].itemId;
+                updateURL();
+                loadedChapters.clear();
+                loadChapter();
+                updateNavButtons();
+                showControls()
+            }
+        }
+
+        function updateURL() {
+            const newUrl = `${window.location.pathname}?book_id=${bookId}&item_id=${currentItemId}`;
+            window.history.replaceState({}, '', newUrl)
+        }
+
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('show')
+        }
+
+        function setFontSize(size) {
+            document.querySelectorAll('.chapter-content').forEach(el => {
+                el.style.fontSize = size + 'px'
+            });
+            document.querySelectorAll('#fontSizeOptions .option-btn').forEach(btn => {
+                btn.classList.remove('active')
+            });
+            event.target.classList.add('active');
+            localStorage.setItem('fontSize', size)
+        }
+
+        function setLineHeight(height) {
+            document.querySelectorAll('.chapter-content').forEach(el => {
+                el.style.lineHeight = height
+            });
+            document.querySelectorAll('#lineHeightOptions .option-btn').forEach(btn => {
+                btn.classList.remove('active')
+            });
+            event.target.classList.add('active');
+            localStorage.setItem('lineHeight', height)
+        }
+
+        function setParagraphSpacing(spacing) {
+            document.querySelectorAll('.chapter-content p').forEach(p => {
+                p.style.marginBottom = spacing + 'em'
+            });
+            document.querySelectorAll('#paragraphSpacingOptions .option-btn').forEach(btn => {
+                btn.classList.remove('active')
+            });
+            event.target.classList.add('active');
+            localStorage.setItem('paragraphSpacing', spacing)
+        }
+
+        function setTextIndent(indent) {
+            document.querySelectorAll('.chapter-content p').forEach(p => {
+                if (!p.querySelector('img')) {
+                    p.style.textIndent = indent + 'em'
+                }
+            });
+            document.querySelectorAll('#textIndentOptions .option-btn').forEach(btn => {
+                btn.classList.remove('active')
+            });
+            event.target.classList.add('active');
+            localStorage.setItem('textIndent', indent)
+        }
+
+        function setPageWidth(width) {
+            const container = document.querySelector('.container');
+            if (width === '100%') {
+                container.style.maxWidth = '100%';
+                container.style.padding = '100px 40px 100px'
+            } else {
+                container.style.maxWidth = width + 'px';
+                container.style.padding = '100px 20px 100px'
+            }
+            document.querySelectorAll('#pageWidthOptions .option-btn').forEach(btn => {
+                btn.classList.remove('active')
+            });
+            event.target.classList.add('active');
+            localStorage.setItem('pageWidth', width)
+        }
+
+        function setInfiniteScroll(enabled) {
+            infiniteScrollEnabled = enabled;
+            document.querySelectorAll('#infiniteScrollOptions .option-btn').forEach(btn => {
+                btn.classList.remove('active')
+            });
+            event.target.classList.add('active');
+            localStorage.setItem('infiniteScroll', enabled)
+        }
+
+        function setTheme(themeName) {
+            const themes = {
+                default: {
+                    bodyBg: '#f5f1e8',
+                    contentBg: '#ffffff',
+                    textColor: '#333',
+                    isDark: false
+                },
+                white: {
+                    bodyBg: '#ffffff',
+                    contentBg: '#ffffff',
+                    textColor: '#333',
+                    isDark: false
+                },
+                green: {
+                    bodyBg: '#e8f4f1',
+                    contentBg: '#ffffff',
+                    textColor: '#2d3748',
+                    isDark: false
+                },
+                pink: {
+                    bodyBg: '#fff5f7',
+                    contentBg: '#ffffff',
+                    textColor: '#4a4a4a',
+                    isDark: false
+                },
+                blue: {
+                    bodyBg: '#e6f3ff',
+                    contentBg: '#f8fbff',
+                    textColor: '#2c3e50',
+                    isDark: false
+                },
+                warm: {
+                    bodyBg: '#fff8f0',
+                    contentBg: '#fffbf5',
+                    textColor: '#3e2723',
+                    isDark: false
+                },
+                paper: {
+                    bodyBg: '#f4e8d0',
+                    contentBg: '#faf6ed',
+                    textColor: '#3e3e3e',
+                    isDark: false
+                },
+                night: {
+                    bodyBg: '#1a1a1a',
+                    contentBg: '#2b2b2b',
+                    textColor: '#e0e0e0',
+                    isDark: true
+                },
+                dark: {
+                    bodyBg: '#0f0f0f',
+                    contentBg: '#1a1a1a',
+                    textColor: '#d0d0d0',
+                    isDark: true
+                }
+            };
+            const theme = themes[themeName] || themes.default;
+            document.body.style.background = theme.bodyBg;
+            document.body.setAttribute('data-theme', themeName);
+            document.querySelectorAll('.chapter-content').forEach(el => {
+                el.style.background = theme.contentBg;
+                el.style.color = theme.textColor;
+            });
+            if (theme.isDark) {
+                document.body.classList.add('dark-mode')
+            } else {
+                document.body.classList.remove('dark-mode')
+            }
+            document.querySelectorAll('#bgColorOptions .option-btn').forEach(btn => {
+                btn.classList.remove('active')
+            });
+            event.target.classList.add('active');
+            localStorage.setItem('theme', themeName)
+        }
+
+        function showCatalog() {
+            document.getElementById('catalogModal').classList.add('show');
+            setTimeout(() => {
+                const activeItem = document.querySelector('.catalog-item.active');
+                if (activeItem) {
+                    activeItem.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    })
+                }
+            }, 100)
+        }
+
+        function closeCatalog() {
+            document.getElementById('catalogModal').classList.remove('show')
+        }
+
+        function closeCatalogIfOutside(event) {
+            if (event.target === document.getElementById('catalogModal')) {
+                closeCatalog()
+            }
+        }
+
+        function loadCatalogList() {
+            const list = document.getElementById('catalogList');
+            list.innerHTML = '';
+            chapterList.forEach((chapter, index) => {
+                const item = document.createElement('div');
+                item.className = 'catalog-item' + (index === currentIndex ? ' active' : '');
+                item.textContent = chapter.title;
+                item.onclick = () => {
+                    currentIndex = index;
+                    currentItemId = chapter.itemId;
+                    updateURL();
+                    loadedChapters.clear();
+                    loadChapter();
+                    updateNavButtons();
+                    closeCatalog()
+                };
+                list.appendChild(item)
+            })
+        }
+
+        function updateCatalogActive() {
+            document.querySelectorAll('.catalog-item').forEach((item, index) => {
+                if (index === currentIndex) {
+                    item.classList.add('active')
+                } else {
+                    item.classList.remove('active')
+                }
+            })
+        }
+
+        function saveReadingProgress() {
+            localStorage.setItem(`reading_${bookId}`, currentItemId)
+        }
+
+        function applyCurrentSettings() {
+            document.querySelectorAll('.chapter-content').forEach(el => {
+                applySettingsToElement(el)
+            })
+        }
+
+        function applySettingsToElement(contentEl) {
+            const fontSize = localStorage.getItem('fontSize') || 18;
+            const lineHeight = localStorage.getItem('lineHeight') || 2.2;
+            const paragraphSpacing = localStorage.getItem('paragraphSpacing') || 1.8;
+            const textIndent = localStorage.getItem('textIndent') || 2;
+            const savedTheme = localStorage.getItem('theme') || 'default';
+            const themes = {
+                default: {
+                    bodyBg: '#f5f1e8',
+                    contentBg: '#ffffff',
+                    textColor: '#333',
+                    isDark: false
+                },
+                white: {
+                    bodyBg: '#ffffff',
+                    contentBg: '#ffffff',
+                    textColor: '#333',
+                    isDark: false
+                },
+                green: {
+                    bodyBg: '#e8f4f1',
+                    contentBg: '#ffffff',
+                    textColor: '#2d3748',
+                    isDark: false
+                },
+                pink: {
+                    bodyBg: '#fff5f7',
+                    contentBg: '#ffffff',
+                    textColor: '#4a4a4a',
+                    isDark: false
+                },
+                blue: {
+                    bodyBg: '#e6f3ff',
+                    contentBg: '#f8fbff',
+                    textColor: '#2c3e50',
+                    isDark: false
+                },
+                warm: {
+                    bodyBg: '#fff8f0',
+                    contentBg: '#fffbf5',
+                    textColor: '#3e2723',
+                    isDark: false
+                },
+                paper: {
+                    bodyBg: '#f4e8d0',
+                    contentBg: '#faf6ed',
+                    textColor: '#3e3e3e',
+                    isDark: false
+                },
+                night: {
+                    bodyBg: '#1a1a1a',
+                    contentBg: '#2b2b2b',
+                    textColor: '#e0e0e0',
+                    isDark: true
+                },
+                dark: {
+                    bodyBg: '#0f0f0f',
+                    contentBg: '#1a1a1a',
+                    textColor: '#d0d0d0',
+                    isDark: true
+                }
+            };
+            const theme = themes[savedTheme] || themes.default;
+            contentEl.style.fontSize = fontSize + 'px';
+            contentEl.style.lineHeight = lineHeight;
+            contentEl.style.background = theme.contentBg;
+            contentEl.style.color = theme.textColor;
+            contentEl.querySelectorAll('p').forEach(p => {
+                p.style.marginBottom = paragraphSpacing + 'em';
+                if (!p.querySelector('img')) {
+                    p.style.textIndent = textIndent + 'em'
+                }
+            })
+        }
+
+        function restoreSettings() {
+            const savedFontSize = localStorage.getItem('fontSize');
+            const savedLineHeight = localStorage.getItem('lineHeight');
+            const savedParagraphSpacing = localStorage.getItem('paragraphSpacing');
+            const savedTextIndent = localStorage.getItem('textIndent');
+            const savedPageWidth = localStorage.getItem('pageWidth');
+            const savedTheme = localStorage.getItem('theme');
+            const savedInfiniteScroll = localStorage.getItem('infiniteScroll');
+            if (savedFontSize) {
+                document.querySelectorAll('.chapter-content').forEach(el => {
+                    el.style.fontSize = savedFontSize + 'px'
+                });
+                updateActiveButton('fontSizeOptions', savedFontSize)
+            }
+            if (savedLineHeight) {
+                document.querySelectorAll('.chapter-content').forEach(el => {
+                    el.style.lineHeight = savedLineHeight
+                });
+                updateActiveButton('lineHeightOptions', savedLineHeight)
+            }
+            if (savedParagraphSpacing) {
+                document.querySelectorAll('.chapter-content p').forEach(p => {
+                    p.style.marginBottom = savedParagraphSpacing + 'em'
+                });
+                updateActiveButton('paragraphSpacingOptions', savedParagraphSpacing)
+            }
+            if (savedTextIndent) {
+                document.querySelectorAll('.chapter-content p').forEach(p => {
+                    if (!p.querySelector('img')) {
+                        p.style.textIndent = savedTextIndent + 'em'
+                    }
+                });
+                updateActiveButton('textIndentOptions', savedTextIndent)
+            }
+            if (savedPageWidth) {
+                const container = document.querySelector('.container');
+                if (savedPageWidth === '100%') {
+                    container.style.maxWidth = '100%';
+                    container.style.padding = '100px 40px 100px'
+                } else {
+                    container.style.maxWidth = savedPageWidth + 'px'
+                }
+                updateActiveButton('pageWidthOptions', savedPageWidth)
+            }
+            if (savedTheme) {
+                const themes = {
+                    default: {
+                        bodyBg: '#f5f1e8',
+                        contentBg: '#ffffff',
+                        textColor: '#333',
+                        isDark: false
+                    },
+                    white: {
+                        bodyBg: '#ffffff',
+                        contentBg: '#ffffff',
+                        textColor: '#333',
+                        isDark: false
+                    },
+                    green: {
+                        bodyBg: '#e8f4f1',
+                        contentBg: '#ffffff',
+                        textColor: '#2d3748',
+                        isDark: false
+                    },
+                    pink: {
+                        bodyBg: '#fff5f7',
+                        contentBg: '#ffffff',
+                        textColor: '#4a4a4a',
+                        isDark: false
+                    },
+                    blue: {
+                        bodyBg: '#e6f3ff',
+                        contentBg: '#f8fbff',
+                        textColor: '#2c3e50',
+                        isDark: false
+                    },
+                    warm: {
+                        bodyBg: '#fff8f0',
+                        contentBg: '#fffbf5',
+                        textColor: '#3e2723',
+                        isDark: false
+                    },
+                    paper: {
+                        bodyBg: '#f4e8d0',
+                        contentBg: '#faf6ed',
+                        textColor: '#3e3e3e',
+                        isDark: false
+                    },
+                    night: {
+                        bodyBg: '#1a1a1a',
+                        contentBg: '#2b2b2b',
+                        textColor: '#e0e0e0',
+                        isDark: true
+                    },
+                    dark: {
+                        bodyBg: '#0f0f0f',
+                        contentBg: '#1a1a1a',
+                        textColor: '#d0d0d0',
+                        isDark: true
+                    }
+                };
+                const theme = themes[savedTheme] || themes.default;
+                document.body.style.background = theme.bodyBg;
+                document.body.setAttribute('data-theme', savedTheme);
+                document.querySelectorAll('.chapter-content').forEach(el => {
+                    el.style.background = theme.contentBg;
+                    el.style.color = theme.textColor;
+                });
+                if (theme.isDark) {
+                    document.body.classList.add('dark-mode')
+                }
+                updateActiveButton('bgColorOptions', savedTheme)
+            }
+            if (savedInfiniteScroll !== null) {
+                infiniteScrollEnabled = savedInfiniteScroll === 'true';
+                updateActiveButton('infiniteScrollOptions', infiniteScrollEnabled)
+            }
+        }
+
+        function updateActiveButton(groupId, value) {
+            document.querySelectorAll(`#${groupId} .option-btn`).forEach(btn => {
+                btn.classList.remove('active');
+                if (groupId === 'bgColorOptions') {
+                    const btnTheme = btn.onclick.toString().match(/setTheme\('([^']+)'\)/)?.[1];
+                    if (btnTheme === value) {
+                        btn.classList.add('active')
+                    }
+                } else {
+                    const btnValue = btn.onclick.toString().match(/\(([^)]+)\)/)?.[1];
+                    if (btnValue && (btnValue == value || btnValue === `'${value}'` || btnValue === `${value}`)) {
+                        btn.classList.add('active')
+                    }
+                }
+            })
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') {
+                prevChapter()
+            } else if (e.key === 'ArrowRight') {
+                nextChapter()
+            } else if (e.key === 'Escape') {
+                closeImagePreview();
+                closeCatalog();
+                const panel = document.getElementById('settingsPanel');
+                if (panel.classList.contains('show')) {
+                    toggleSettings()
+                }
+            }
+        });
+        let touchStartX = 0;
+        let touchEndX = 0;
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.chapter-content') && !e.target.closest('img')) {
+                touchStartX = e.changedTouches[0].screenX
+            }
+        });
+        document.addEventListener('touchend', (e) => {
+            if (e.target.closest('.chapter-content') && !e.target.closest('img')) {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe()
+            }
+        });
+
+        function handleSwipe() {
+            const threshold = 100;
+            if (touchEndX < touchStartX - threshold) {
+                nextChapter()
+            }
+            if (touchEndX > touchStartX + threshold) {
+                prevChapter()
+            }
+        }
+
+        function hideControls() {
+            if (isControlsVisible) {
+                document.getElementById('header').classList.add('hidden');
+                document.getElementById('navButtons').classList.add('hidden');
+                document.getElementById('settingsToggle').classList.add('hidden');
+                document.getElementById('catalogToggle').classList.add('hidden');
+                isControlsVisible = false
+            }
+        }
+
+        function showControls() {
+            if (!isControlsVisible) {
+                document.getElementById('header').classList.remove('hidden');
+                document.getElementById('navButtons').classList.remove('hidden');
+                document.getElementById('settingsToggle').classList.remove('hidden');
+                document.getElementById('catalogToggle').classList.remove('hidden');
+                isControlsVisible = true
+            }
+        }
+        window.addEventListener('scroll', () => {
+            const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            if (currentScrollTop <= 0) {
+                showControls()
+            } else if (currentScrollTop > lastScrollTop) {
+                hideControls()
+            } else if (lastScrollTop - currentScrollTop > 50) {
+                showControls()
+            }
+            lastScrollTop = currentScrollTop;
+            if (infiniteScrollEnabled && !isLoadingNext) {
+                const scrollHeight = document.documentElement.scrollHeight;
+                const scrollTop = document.documentElement.scrollTop;
+                const clientHeight = document.documentElement.clientHeight;
+                if (scrollTop + clientHeight >= scrollHeight - 500) {
+                    loadNextChapterInfinite()
+                }
+            }
+        });
+        window.addEventListener('load', () => {
+            showControls()
+        });
+    </script>
+</body>
+</html>
