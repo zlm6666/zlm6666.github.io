@@ -1327,7 +1327,7 @@
                 alert('没有可下载的章节');
                 return
             }
-            const confirmed = confirm(`确定要下载全部${totalChapters}章吗？\n将自动分批下载，每批50章。`);
+            const confirmed = confirm(`确定要下载全部${totalChapters}章吗？\n将自动分批下载，每批30章。`);
             if (!confirmed) return;
             isDownloading = true;
             setDownloadButtonsState(true);
@@ -1339,7 +1339,7 @@
             statusText.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 开始下载全部章节...';
             let allContent = '';
             let downloadedChapters = 0;
-            const batchSize = 50;
+            const batchSize = 30;
             const totalBatches = Math.ceil(totalChapters / batchSize);
             try {
                 for (let i = 0; i < totalBatches; i++) {
