@@ -124,7 +124,7 @@
             gap: 15px;
         }
 
-        @keyframes fadeInUp {
+        /* @keyframes fadeInUp {
             from {
                 opacity: 0;
                 transform: translateY(30px);
@@ -133,7 +133,7 @@
                 opacity: 1;
                 transform: translateY(0);
             }
-        }
+        } */
 
         .book-cover {
             flex-shrink: 0;
@@ -956,7 +956,7 @@
 </head>
 <body>
     <div class="header">
-        <a href="/search.html">
+        <a href="/fq/index.html">
             <i class="fas fa-arrow-left"></i>
             <span>返回搜索</span>
         </a>
@@ -1049,7 +1049,7 @@
             bookId = urlParams.get('book_id');
             bookType = urlParams.get('book_type');
             if (!bookId) {
-                alert('缺少book_id参数');
+                await customAlert('缺少book_id参数');
                 return
             }
             await loadBookDetail();
@@ -1074,7 +1074,7 @@
                 }
             } catch (error) {
                 console.error('加载详情失败:', error);
-                alert('加载失败，请重试')
+                await customAlert('加载失败，请重试');
             }
         }
         async function loadChapters() {
@@ -1297,15 +1297,15 @@
 
         function goToRead(itemId) {
             if (bookType === '3') {
-                window.location.href = `/fq/read.html?book_id=${bookId}&item_id=${itemId}`
+                window.location.href = `/read.html?book_id=${bookId}&item_id=${itemId}`
             } else if (bookType === '2') {
-                window.location.href = `/fq/listen.html?book_id=${bookId}&item_id=${itemId}&tab=听书`
+                window.location.href = `/listen.html?book_id=${bookId}&item_id=${itemId}&tab=听书`
             } else if (bookType === '8') {
-                window.location.href = `/fq/comic.html?book_id=${bookId}&item_id=${itemId}&tab=漫画`
+                window.location.href = `/comic.html?book_id=${bookId}&item_id=${itemId}&tab=漫画`
             } else if (bookType === '11') {
-                window.location.href = `/fq/video?book_id=${bookId}`
+                window.location.href = `/video?book_id=${bookId}`
             } else {
-                window.location.href = `/fq/read.html?book_id=${bookId}&item_id=${itemId}&tab=小说`
+                window.location.href = `/read.html?book_id=${bookId}&item_id=${itemId}&tab=小说`
             }
         }
 
@@ -1318,16 +1318,16 @@
         }
         async function downloadAllChapters() {
             if (isDownloading) {
-                alert('正在下载中，请稍候...');
+                await customAlert('正在下载中，请稍候...');
                 return
             }
             const allChapters = chapterList.flat();
             const totalChapters = allChapters.length;
             if (totalChapters === 0) {
-                alert('没有可下载的章节');
+                await customAlert('没有可下载的章节');
                 return
             }
-            const confirmed = confirm(`确定要下载全部${totalChapters}章吗？\n将自动分批下载，每批50章。`);
+            const confirmed = await customConfirm(`确定要下载《${bookData.book_name}》共${totalChapters}章吗？`);
             if (!confirmed) return;
             isDownloading = true;
             setDownloadButtonsState(true);
@@ -1336,71 +1336,242 @@
             const progressFill = document.getElementById('progressFill');
             const downloadInfoText = document.getElementById('downloadInfoText');
             statusDiv.style.display = 'block';
-            statusText.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 开始下载全部章节...';
-            let allContent = '';
-            let downloadedChapters = 0;
-            const batchSize = 50;
-            const totalBatches = Math.ceil(totalChapters / batchSize);
+            statusText.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 服务器正在努力加载中...';
+            progressFill.style.width = '0%';
+            progressFill.textContent = '0%';
+            downloadInfoText.textContent = ' 服务器正在努力加载中...';
+            
             try {
-                for (let i = 0; i < totalBatches; i++) {
-                    const start = i * batchSize;
-                    const end = Math.min((i + 1) * batchSize, totalChapters);
-                    statusText.innerHTML = `<i class="fas fa-spinner fa-pulse"></i>正在下载第${i+1}/${totalBatches}批(第${start+1}-${end}章)...`;
-                    const targetChapters = allChapters.slice(start, end);
-                    const itemIds = targetChapters.map(c => c.itemId);
-                    const itemIdsStr = itemIds.join(',');
-                    const response = await fetch(`http://49.232.137.12/api/content?item_ids=${itemIdsStr}&book_id=${bookId}&tab=批量`);
-                    const data = await response.json();
-                    if (data.code === 200 && data.data && data.data.chapters) {
-                        const chapterMap = {};
-                        data.data.chapters.forEach(chapter => {
-                            if (chapter.novel_data && chapter.novel_data.item_id) {
-                                chapterMap[chapter.novel_data.item_id] = chapter
-                            }
-                        });
-                        itemIds.forEach(itemId => {
-                            const chapter = chapterMap[itemId];
-                            if (chapter && chapter.novel_data && chapter.content) {
-                                allContent += `\n\n${chapter.novel_data.title}\n\n`;
-                                allContent += chapter.content;
-                                downloadedChapters++
-                            }
-                        });
-                        const progress = Math.round((downloadedChapters / totalChapters) * 100);
-                        progressFill.style.width = progress + '%';
-                        progressFill.textContent = progress + '%';
-                        downloadInfoText.textContent = `已下载:${downloadedChapters}/${totalChapters}章`;
-                        if (i < totalBatches - 1) {
-                            await new Promise(resolve => setTimeout(resolve, 500))
-                        }
+                const response = await fetch(`http://49.232.137.12/api/content?book_id=${bookId}&tab=下载`);
+                if (!response.ok) {
+                    throw new Error('下载失败：' + response.statusText);
+                }
+                
+                const contentLength = response.headers.get('Content-Length');
+                const totalSize = contentLength ? parseInt(contentLength, 10) : 0;
+                let receivedSize = 0;
+                
+                const reader = response.body.getReader();
+                const chunks = [];
+                
+                statusText.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 正在下载中...';
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    chunks.push(value);
+                    receivedSize += value.length;
+                    
+                    if (totalSize) {
+                        const progress = Math.round((receivedSize / totalSize) * 100);
+                        progressFill.style.width = `${progress}%`;
+                        progressFill.textContent = `${progress}%`;
+                        const mb = (receivedSize / (1024 * 1024)).toFixed(2);
+                        downloadInfoText.textContent = `已下载 ${mb}/${(totalSize / (1024 * 1024)).toFixed(2)} MB`;
                     } else {
-                        throw new Error(`第${i+1}批下载失败`)
+                        const mb = (receivedSize / (1024 * 1024)).toFixed(2);
+                        downloadInfoText.textContent = `已下载 ${mb} MB`;
                     }
                 }
-                const blob = new Blob([allContent], {
-                    type: 'text/plain;charset=utf-8'
-                });
+                
+                const blob = new Blob(chunks, { type: 'text/plain; charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `${bookData.book_name}_全集_共${totalChapters}章.txt`;
+                a.download = `${bookData.book_name}(${bookData.author}).txt`;
                 a.click();
                 URL.revokeObjectURL(url);
+                
                 statusText.innerHTML = '<i class="fas fa-check-circle"></i> 下载完成！';
-                downloadInfoText.textContent = `已成功下载全部${downloadedChapters}章并保存到文件`
+                downloadInfoText.textContent = `已成功下载《${bookData.book_name}》共${totalChapters}章`;
+                progressFill.style.width = '100%';
+                progressFill.textContent = '100%';
             } catch (error) {
                 console.error('下载失败:', error);
                 statusText.innerHTML = '<i class="fas fa-exclamation-circle"></i> 下载失败';
-                downloadInfoText.textContent = error.message
+                downloadInfoText.textContent = error.message;
             } finally {
                 isDownloading = false;
-                setDownloadButtonsState(false)
+                setDownloadButtonsState(false);
             }
         }
 
         function setDownloadButtonsState(disabled) {
             document.getElementById('downloadAllBtn').disabled = disabled
         }
+
+        // 自定义模态框相关变量
+        let modalResolve;
+
+        // 显示模态框
+        function showModal(title, message, showCancel = false) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('modalCancelBtn').style.display = showCancel ? 'inline-block' : 'none';
+            document.getElementById('customModal').style.display = 'flex';
+            // 设置焦点到确定按钮
+            document.getElementById('modalOkBtn').focus();
+        }
+
+        // 关闭模态框
+        function closeModal(confirmed) {
+            document.getElementById('customModal').style.display = 'none';
+            if (modalResolve) {
+                modalResolve(confirmed);
+                modalResolve = null;
+            }
+        }
+
+        // 自定义 alert
+        function customAlert(message) {
+            return new Promise((resolve) => {
+                modalResolve = resolve;
+                showModal('提示', message, false);
+            });
+        }
+
+        // 自定义 confirm
+        function customConfirm(message) {
+            return new Promise((resolve) => {
+                modalResolve = resolve;
+                showModal('确认', message, true);
+            });
+        }
+
+        // 点击模态框外部关闭模态框
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('customModal');
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === 'customModal') {
+                        closeModal(false);
+                    }
+                });
+
+                // 按 ESC 键关闭模态框
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        if (modal.style.display === 'flex') {
+                            closeModal(false);
+                        }
+                    }
+                });
+
+                // 按 Enter 键确认
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        if (modal.style.display === 'flex') {
+                            closeModal(true);
+                        }
+                    }
+                });
+            }
+        });
     </script>
+
+<style>
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: fadeInScale 0.3s ease;
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal-header h3 {
+    margin: 0 0 20px 0;
+    color: #F54E00;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.modal-body p {
+    margin: 0 0 30px 0;
+    color: #333;
+    font-size: 16px;
+    line-height: 1.8;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+}
+
+.modal-footer button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-footer button.btn-primary {
+    background-color: #F54E00;
+    color: white;
+}
+
+.modal-footer button.btn-primary:hover {
+    background-color: #FF7A3D;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 78, 0, 0.4);
+}
+
+.modal-footer button.btn-secondary {
+    background-color: #E0E0E0;
+    color: #333;
+}
+
+.modal-footer button.btn-secondary:hover {
+    background-color: #BDBDBD;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+</style>
+
+<div id="customModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle"></h3>
+        </div>
+        <div class="modal-body">
+            <p id="modalMessage"></p>
+        </div>
+        <div class="modal-footer">
+            <button id="modalCancelBtn" class="btn btn-secondary" onclick="closeModal(false)">取消</button>
+            <button id="modalOkBtn" class="btn btn-primary" onclick="closeModal(true)">确定</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
