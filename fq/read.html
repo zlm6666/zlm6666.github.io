@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+    <link rel="icon" href="./assets/favicon.ico" type="image/x-icon">
     <title>阅读 - 番茄小说</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -1333,7 +1333,7 @@
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000);
-                const response = await fetch(http://49.232.137.12/api/book?book_id=${bookId}`, {
+                const response = await fetch(`http://49.232.137.12/api/book?book_id=${bookId}`, {
                     signal: controller.signal
                 });
                 clearTimeout(timeoutId);
