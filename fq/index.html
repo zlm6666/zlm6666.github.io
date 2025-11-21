@@ -757,7 +757,7 @@
             document.getElementById('loadMore').style.display = 'none';
             
             try {
-                const response = await fetch(`https://fq.shusan.cn/api/detail?book_id=${bookId}`);
+                const response = await fetch(http://49.232.137.12/api/detail?book_id=${bookId}`);
                 const data = await response.json();
                 
                 if (data.code === 200 && data.data && data.data.data) {
@@ -846,7 +846,7 @@
             document.getElementById('loadMore').style.display = 'none';
             
             try {
-                const response = await fetch(`https://fq.shusan.cn/api/search?key=${encodeURIComponent(keyword)}&tab_type=${currentTabType}&offset=${currentOffset}`);
+                const response = await fetch(http://49.232.137.12/api/search?key=${encodeURIComponent(keyword)}&tab_type=${currentTabType}&offset=${currentOffset}`);
                 const data = await response.json();
                 
                 if (data.code === 200 && data.data && data.data.search_tabs) {
@@ -875,7 +875,7 @@
             document.getElementById('loading').style.display = 'block';
             
             try {
-                const response = await fetch(`https://fq.shusan.cn/api/search?key=${encodeURIComponent(currentKeyword)}&tab_type=${currentTabType}&offset=${currentOffset}`);
+                const response = await fetch(`http://49.232.137.12/api/search?key=${encodeURIComponent(currentKeyword)}&tab_type=${currentTabType}&offset=${currentOffset}`);
                 const data = await response.json();
                 
                 if (data.code === 200 && data.data && data.data.search_tabs) {
