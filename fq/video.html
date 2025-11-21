@@ -1073,7 +1073,7 @@
             }
 
             async function fetchCatalog() {
-                const url = http://49.232.137.12/api/book?book_id=${bookId}`;
+                const url = `http://49.232.137.12/api/book?book_id=${bookId}`;
                 const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error('获取剧集列表失败');
