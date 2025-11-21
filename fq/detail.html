@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+    <link rel="icon" href="./assets/favicon.ico" type="image/x-icon">
     <title>书籍详情 - 番茄小说</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -956,7 +956,7 @@
 </head>
 <body>
     <div class="header">
-        <a href="/fq/index.html">
+        <a href="/search.html">
             <i class="fas fa-arrow-left"></i>
             <span>返回搜索</span>
         </a>
@@ -1066,7 +1066,7 @@
         });
         async function loadBookDetail() {
             try {
-                const response = await fetch(http://49.232.137.12/api/detail?book_id=${bookId}`);
+                const response = await fetch(`http://49.232.137.12/api/detail?book_id=${bookId}`);
                 const data = await response.json();
                 if (data.code === 200 && data.data && data.data.data) {
                     bookData = data.data.data;
@@ -1327,7 +1327,7 @@
                 alert('没有可下载的章节');
                 return
             }
-            const confirmed = confirm(`确定要下载全部${totalChapters}章吗？\n将自动分批下载，每批30章。`);
+            const confirmed = confirm(`确定要下载全部${totalChapters}章吗？\n将自动分批下载，每批50章。`);
             if (!confirmed) return;
             isDownloading = true;
             setDownloadButtonsState(true);
@@ -1339,7 +1339,7 @@
             statusText.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> 开始下载全部章节...';
             let allContent = '';
             let downloadedChapters = 0;
-            const batchSize = 30;
+            const batchSize = 50;
             const totalBatches = Math.ceil(totalChapters / batchSize);
             try {
                 for (let i = 0; i < totalBatches; i++) {
