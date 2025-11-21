@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+    <link rel="icon" href="./assets/favicon.ico" type="image/x-icon">
     <title>漫画阅读</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -891,7 +891,7 @@
     let lastScrollTop = 0;
     async function loadChapterList() {
         try {
-            const response = await fetch(http://49.232.137.12/api/book?book_id=${bookId}`);
+            const response = await fetch(`http://49.232.137.12/api/book?book_id=${bookId}`);
             const data = await response.json();
             if (data.code === 200) {
                 chapters = data.data.data.chapterListWithVolume.flat();
