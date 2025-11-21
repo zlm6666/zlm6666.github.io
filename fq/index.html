@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+    <link rel="icon" href="./assets/favicon.ico" type="image/x-icon">
     <title>搜索 - 番茄小说</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -757,7 +757,7 @@
             document.getElementById('loadMore').style.display = 'none';
             
             try {
-                const response = await fetch(http://49.232.137.12/api/detail?book_id=${bookId}`);
+                const response = await fetch(`http://49.232.137.12/api/detail?book_id=${bookId}`);
                 const data = await response.json();
                 
                 if (data.code === 200 && data.data && data.data.data) {
@@ -846,7 +846,7 @@
             document.getElementById('loadMore').style.display = 'none';
             
             try {
-                const response = await fetch(http://49.232.137.12/api/search?key=${encodeURIComponent(keyword)}&tab_type=${currentTabType}&offset=${currentOffset}`);
+                const response = await fetch(`http://49.232.137.12/api/search?key=${encodeURIComponent(keyword)}&tab_type=${currentTabType}&offset=${currentOffset}`);
                 const data = await response.json();
                 
                 if (data.code === 200 && data.data && data.data.search_tabs) {
