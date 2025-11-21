@@ -1066,7 +1066,7 @@
         });
         async function loadBookDetail() {
             try {
-                const response = await fetch(`https://fq.shusan.cn/api/detail?book_id=${bookId}`);
+                const response = await fetch(http://49.232.137.12/api/detail?book_id=${bookId}`);
                 const data = await response.json();
                 if (data.code === 200 && data.data && data.data.data) {
                     bookData = data.data.data;
@@ -1079,7 +1079,7 @@
         }
         async function loadChapters() {
             try {
-                const response = await fetch(`https://fq.shusan.cn/api/book?book_id=${bookId}`);
+                const response = await fetch(`http://49.232.137.12/api/book?book_id=${bookId}`);
                 const data = await response.json();
                 if (data.code === 200 && data.data && data.data.data) {
                     chapterList = data.data.data.chapterListWithVolume || [];
@@ -1349,7 +1349,7 @@
                     const targetChapters = allChapters.slice(start, end);
                     const itemIds = targetChapters.map(c => c.itemId);
                     const itemIdsStr = itemIds.join(',');
-                    const response = await fetch(`https://fq.shusan.cn/api/content?item_ids=${itemIdsStr}&book_id=${bookId}&tab=批量`);
+                    const response = await fetch(`http://49.232.137.12/api/content?item_ids=${itemIdsStr}&book_id=${bookId}&tab=批量`);
                     const data = await response.json();
                     if (data.code === 200 && data.data && data.data.chapters) {
                         const chapterMap = {};
