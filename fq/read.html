@@ -1333,7 +1333,7 @@
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000);
-                const response = await fetch(`https://fq.shusan.cn/api/book?book_id=${bookId}`, {
+                const response = await fetch(http://49.232.137.12/api/book?book_id=${bookId}`, {
                     signal: controller.signal
                 });
                 clearTimeout(timeoutId);
@@ -1368,7 +1368,7 @@
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000);
-                const response = await fetch(`https://fq.shusan.cn/api/content?item_id=${currentItemId}&tab=小说`, {
+                const response = await fetch(`http://49.232.137.12/api/content?item_id=${currentItemId}&tab=小说`, {
                     signal: controller.signal
                 });
                 clearTimeout(timeoutId);
@@ -1491,7 +1491,7 @@
                 try {
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 30000);
-                    const response = await fetch(`https://fq.shusan.cn/api/content?item_id=${nextItemId}&tab=小说`, {
+                    const response = await fetch(`http://49.232.137.12/api/content?item_id=${nextItemId}&tab=小说`, {
                         signal: controller.signal
                     });
                     clearTimeout(timeoutId);
