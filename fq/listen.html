@@ -924,7 +924,7 @@
         }
         async function loadBookDetail() {
             try {
-                const response = await fetch(`https://fq.shusan.cn/api/detail?book_id=${bookId}`);
+                const response = await fetch(http://49.232.137.12/api/detail?book_id=${bookId}`);
                 const data = await response.json();
                 if (data.code === 200) {
                     bookData = data.data.data;
@@ -940,7 +940,7 @@
         }
         async function loadChapterList() {
             try {
-                const response = await fetch(`https://fq.shusan.cn/api/book?book_id=${bookId}`);
+                const response = await fetch(http://49.232.137.12/api/book?book_id=${bookId}`);
                 const data = await response.json();
                 if (data.code === 200) {
                     chapters = data.data.data.chapterListWithVolume.flat();
@@ -959,7 +959,7 @@
             canSaveProgress = false;
             audioPlayer.pause();
             try {
-                const response = await fetch(`https://fq.shusan.cn/api/content?item_id=${itemId}&tab=听书&tone_id=${toneId}`);
+                const response = await fetch(`http://49.232.137.12/api/content?item_id=${itemId}&tab=听书&tone_id=${toneId}`);
                 const data = await response.json();
                 if (data.code === 200) {
                     document.getElementById('chapterTitle').textContent = chapters[currentIndex]?.title || '正在播放';
